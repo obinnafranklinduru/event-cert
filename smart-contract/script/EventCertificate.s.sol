@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+pragma solidity ^0.8.30;
 
 import "forge-std/Script.sol";
 import "..//src/EventCertificate.sol";
@@ -11,25 +11,24 @@ import "..//src/EventCertificate.sol";
 contract DeployEventCertificate is Script {
     // --- Configuration ---
     // These values should be configured before running the script.
-    
+
     // The trusted relayer address that will pay gas for mints.
-    address constant RELAYER_ADDRESS = 0xYourRelayerAddressHere; // TODO: Replace with your actual relayer address
-    
-    // The base URI pointing to your IPFS metadata folder.
-    // Example: "ipfs://QmYourMetadataFolderCID/"
-    string constant BASE_URI = "ipfs://YourMetadataFolderCID/"; // TODO: Replace with your actual IPFS CID
-    
-    // Example: 1 hours = 3600 seconds. Set to 0 to start immediately.
-    uint256 constant MINT_DELAY_SECONDS = 3600; 
+    address constant RELAYER_ADDRESS = address(0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266);
+
+    // The base URI pointing to your IPFS metadata folder."
+    string constant BASE_URI = "ipfs://QmYourMetadataFolderCID/";
+
+    // How many seconds from the deployment time the minting window should open.
+    uint256 constant MINT_DELAY_SECONDS = 60; // 1 minute from deployment time
 
     /// @notice Deploys the EventCertificate contract.
     /// @dev Reads the deployer's private key from the .env file and the Merkle Root from merkleRoot.txt.
     function run() external returns (EventCertificate) {
         // --- 1. Load Deployment Configuration ---
         // Reads the private key for the deployer wallet from the .env file.
-        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
+        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY_DEPLOYER");
         if (deployerPrivateKey == 0) {
-            revert("PRIVATE_KEY not set in .env file");
+            revert("PRIVATE_KEY_DEPLOYER not set in .env file");
         }
 
         // --- 2. Read Off-Chain Data ---
@@ -50,12 +49,8 @@ contract DeployEventCertificate is Script {
         vm.startBroadcast(deployerPrivateKey);
 
         // Deploy the contract with all the necessary arguments.
-        EventCertificate certificateContract = new EventCertificate(
-            BASE_URI,
-            RELAYER_ADDRESS,
-            mintStartTime,
-            merkleRoot
-        );
+        EventCertificate certificateContract =
+            new EventCertificate(BASE_URI, RELAYER_ADDRESS, mintStartTime, merkleRoot);
 
         // Stops broadcasting.
         vm.stopBroadcast();

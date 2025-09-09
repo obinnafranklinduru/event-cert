@@ -1,15 +1,16 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+pragma solidity ^0.8.30;
 
-import "forge-std/Test.sol";
-import "../../src/EventCertificate.sol";
-import {MerkleProofLib} from "solady/utils/MerkleProofLib.sol";
+import {Test} from "forge-std/Test.sol";
+import {EventCertificate} from "../../src/EventCertificate.sol";
+import {Merkle} from "murky/Merkle.sol";
 
 /// @title EventCertificateIntegrationTest
 /// @notice Tests the interactions between different functions and state changes over time,
 /// simulating a more realistic user and admin journey.
 contract EventCertificateIntegrationTest is Test {
     EventCertificate internal certificateContract;
+    Merkle internal merkleTree;
 
     // --- Actors ---
     address internal owner = makeAddr("owner");
@@ -23,21 +24,18 @@ contract EventCertificateIntegrationTest is Test {
     bytes32[] internal proofForBob;
 
     function setUp() public {
-        bytes32[] memory leaves = new bytes32[](2);
-        leaves[0] = keccak256(abi.encodePacked(alice));
-        leaves[1] = keccak256(abi.encodePacked(bob));
+        merkleTree = new Merkle();
 
-        merkleRoot = MerkleProofLib.getMerkleRoot(leaves);
-        proofForAlice = MerkleProofLib.getMerkleProof(leaves, 0);
-        proofForBob = MerkleProofLib.getMerkleProof(leaves, 1);
+        bytes32[] memory leaves = new bytes32[](2);
+        leaves[0] = keccak256(bytes.concat(keccak256(abi.encode(alice))));
+        leaves[1] = keccak256(bytes.concat(keccak256(abi.encode(bob))));
+
+        merkleRoot = merkleTree.getRoot(leaves);
+        proofForAlice = merkleTree.getProof(leaves, 0);
+        proofForBob = merkleTree.getProof(leaves, 1);
 
         vm.prank(owner);
-        certificateContract = new EventCertificate(
-            "ipfs://CID/",
-            relayer,
-            block.timestamp,
-            merkleRoot
-        );
+        certificateContract = new EventCertificate("ipfs://CID/", relayer, block.timestamp, merkleRoot);
     }
 
     /// @notice Tests a full lifecycle: initial mints, an admin update, and post-update interactions.
@@ -73,10 +71,12 @@ contract EventCertificateIntegrationTest is Test {
 
         // 6. Owner adds a new user (Eve) to the whitelist by updating the Merkle root.
         address eve = makeAddr("eve");
-        bytes32[] memory newLeaves = new bytes32[](1);
-        newLeaves[0] = keccak256(abi.encodePacked(eve));
-        bytes32 newMerkleRoot = MerkleProofLib.getMerkleRoot(newLeaves);
-        bytes32[] memory proofForEve = MerkleProofLib.getMerkleProof(newLeaves, 0);
+        address adam = makeAddr("adam");
+        bytes32[] memory newLeaves = new bytes32[](2);
+        newLeaves[0] = keccak256(bytes.concat(keccak256(abi.encode(eve))));
+        newLeaves[1] = keccak256(bytes.concat(keccak256(abi.encode(adam))));
+        bytes32 newMerkleRoot = merkleTree.getRoot(newLeaves);
+        bytes32[] memory proofForEve = merkleTree.getProof(newLeaves, 0);
 
         vm.prank(owner);
         certificateContract.updateMerkleRoot(newMerkleRoot);

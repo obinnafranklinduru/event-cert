@@ -4,6 +4,6 @@
 [submodule "smart-contract/lib/openzeppelin-contracts"]
 	path = smart-contract/lib/openzeppelin-contracts
 	url = https://github.com/OpenZeppelin/openzeppelin-contracts
-[submodule "smart-contract/lib/solmate"]
-	path = smart-contract/lib/solmate
-	url = https://github.com/transmissions11/solmate
+[submodule "smart-contract/lib/murky"]
+	path = smart-contract/lib/murky
+	url = https://github.com/dmfxyz/murky

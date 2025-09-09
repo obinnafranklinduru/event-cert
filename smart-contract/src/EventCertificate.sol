@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+pragma solidity ^0.8.30;
 
 import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
@@ -44,12 +44,10 @@ contract EventCertificate is ERC721, Ownable {
     /// @param relayer_ The trusted address that will pay gas fees for minting.
     /// @param mintStartTime_ The Unix timestamp when the minting window opens.
     /// @param merkleRoot_ The Merkle Root of the whitelist of eligible attendees.
-    constructor(
-        string memory baseURI_,
-        address relayer_,
-        uint256 mintStartTime_,
-        bytes32 merkleRoot_
-    ) ERC721("Event Certificate", "ECERT") Ownable(msg.sender) {
+    constructor(string memory baseURI_, address relayer_, uint256 mintStartTime_, bytes32 merkleRoot_)
+        ERC721("Event Certificate", "ECERT")
+        Ownable(msg.sender)
+    {
         if (relayer_ == address(0)) revert ZeroAddress();
 
         _baseTokenURI = baseURI_;
@@ -91,11 +89,7 @@ contract EventCertificate is ERC721, Ownable {
     // --- Soulbound (Non-transferable) Logic ---
     /// @dev Overrides the internal _update function (from OpenZeppelin v5) to block all transfers
     /// except for minting (from address(0)) and burning (to address(0)).
-    function _update(address to, uint256 tokenId, address auth)
-        internal
-        override
-        returns (address)
-    {
+    function _update(address to, uint256 tokenId, address auth) internal override returns (address) {
         address from = _ownerOf(tokenId);
         // Allow minting and burning, but disallow all other transfers.
         if (from != address(0) && to != address(0)) {
@@ -108,12 +102,7 @@ contract EventCertificate is ERC721, Ownable {
     /// @notice Returns the metadata URI for a given token.
     /// @dev The URI is deterministically generated based on the token owner's address.
     /// This ensures the link is permanent and independent of minting order.
-    function tokenURI(uint256 tokenId)
-        public
-        view
-        override
-        returns (string memory)
-    {
+    function tokenURI(uint256 tokenId) public view override returns (string memory) {
         // Check if the token exists before proceeding.
         if (ownerOf(tokenId) == address(0)) {
             revert NonExistentToken();
@@ -121,9 +110,9 @@ contract EventCertificate is ERC721, Ownable {
 
         address ownerAddr = ownerOf(tokenId);
         string memory addrStr = _toAsciiString(ownerAddr);
-        
+
         // The final URL will be, e.g., "ipfs://CID/0x123abc...def.json"
-        return string(abi.encodePacked(_baseTokenURI, addrStr, ".json"));
+        return string.concat(_baseTokenURI, addrStr, ".json");
     }
 
     /// @dev Helper function to convert an address to its lowercase hex string representation.
@@ -137,20 +126,20 @@ contract EventCertificate is ERC721, Ownable {
 
         // Create a bytes array of length 42: 2 bytes for '0x' and 40 bytes for the 20-byte address (each byte becomes two hex characters).
         bytes memory str = new bytes(42);
-        str[0] = '0';
-        str[1] = 'x';
+        str[0] = "0";
+        str[1] = "x";
 
         // Loop through each byte of the address (20 bytes).
-        for (uint i = 0; i < 20; i++) {
-            // Extract the byte at position i + 12 from the bytes32 value. 
+        for (uint256 i = 0; i < 20; i++) {
+            // Extract the byte at position i + 12 from the bytes32 value.
             // The address is stored in the last 20 bytes of the 32-byte value, so we start at index 12.
             // Get the high nibble (4 bits) of the byte by shifting right by 4 bits.
             // Convert to uint8 to use as an index in the alphabet.
-            str[2+i*2] = alphabet[uint8(value[i + 12] >> 4)];
+            str[2 + i * 2] = alphabet[uint8(value[i + 12] >> 4)];
 
             // Get the low nibble (4 bits) of the byte by masking with 0x0F.
             // Convert to uint8 to use as an index in the alphabet.
-            str[3+i*2] = alphabet[uint8(value[i + 12] & 0x0f)];
+            str[3 + i * 2] = alphabet[uint8(value[i + 12] & 0x0f)];
         }
         // Convert the bytes array to a string and return it.
         return string(str);
