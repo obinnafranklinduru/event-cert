@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
+import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 
 /// @title EventCertificate
 /// @author Obinna Franklin Duru
@@ -72,7 +72,7 @@ contract EventCertificate is ERC721, Ownable {
         if (hasMinted[attendee]) revert AlreadyMinted();
 
         // Verify that the attendee is on the whitelist using their Merkle proof.
-        bytes32 leaf = keccak256(abi.encodePacked(attendee));
+        bytes32 leaf = keccak256(bytes.concat(keccak256(abi.encode(attendee))));
         if (!MerkleProof.verify(merkleProof, merkleRoot, leaf)) {
             revert InvalidProof();
         }
