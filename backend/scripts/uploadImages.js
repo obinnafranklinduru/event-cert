@@ -6,7 +6,7 @@ const pinataSDK = require("@pinata/sdk");
 const CONFIG = {
   imagesDirPath: path.join(__dirname, "..", "assets", "images"),
   pinataApiKey: process.env.PINATA_API_KEY,
-  pinataSecretKey: process.env.PINATA_SECRET_KEY,
+  pinataSecretKey: process.env.PINATA_API_SECRET,
 };
 
 async function uploadImageFolder() {

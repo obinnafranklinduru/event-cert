@@ -66,7 +66,7 @@ async function generateMetadata() {
     console.log(`Generating metadata for: ${name} (${lowerCaseAddress})`);
 
     // Construct the full IPFS URL for the attendee's personalized image.
-    const imageUrl = `ipfs://${CONFIG.imageFolderCID}/${lowerCaseAddress}.png`;
+    const imageUrl = `https://ipfs.io/ipfs/${CONFIG.imageFolderCID}/${lowerCaseAddress}.png`;
 
     // Create the metadata object.
     const metadata = {
