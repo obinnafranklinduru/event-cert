@@ -3,6 +3,7 @@ const path = require("path");
 const { parse } = require("csv-parse/sync");
 const { MerkleTree } = require("merkletreejs");
 const keccak256 = require("keccak256");
+const ethers = require("ethers");
 
 // Debug: Show current working directory and files
 console.log("Current working directory:", process.cwd());
@@ -48,7 +49,16 @@ async function generateMerkle() {
 
   // 2. Create leaf nodes for the Merkle tree
   // Each leaf is the keccak256 hash of the attendee's address.
-  const leaves = addresses.map((addr) => keccak256(addr));
+  const leaves = addresses.map((addr) => {
+    // Match the contract's exact calculation: keccak256(bytes.concat(keccak256(abi.encode(attendee))))
+    const encoded = ethers.AbiCoder.defaultAbiCoder().encode(
+      ["address"],
+      [addr]
+    );
+    const innerHash = ethers.keccak256(encoded);
+    const leaf = ethers.keccak256(ethers.concat([innerHash]));
+    return leaf;
+  });
 
   // 3. Build the Merkle tree
   const merkleTree = new MerkleTree(leaves, keccak256, { sortPairs: true });

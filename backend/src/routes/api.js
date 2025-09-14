@@ -6,8 +6,6 @@ const {
 
 const router = express.Router();
 
-// --- API Endpoints ---
-
 /**
  * @route GET /api/get-proof
  * @description Provides the Merkle proof for a given wallet address.

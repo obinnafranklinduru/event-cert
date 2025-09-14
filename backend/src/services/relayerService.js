@@ -1,4 +1,5 @@
-const { contract } = require("../config/web");
+const { deployedContract, relayerWallet } = require("../config/web");
+const { AppError } = require("../middleware/errorHandler");
 
 /**
  * Submits the mint transaction to the blockchain.
@@ -9,29 +10,20 @@ const { contract } = require("../config/web");
  */
 async function mintNFT(attendee, merkleProof) {
   try {
-    console.log(
-      `[Relayer Service] Estimating gas for minting for attendee: ${attendee}`
-    );
-    // Estimate gas for the transaction to catch potential reverts early.
-    const gasEstimate = await contract.estimateGas.mint(attendee, merkleProof);
-    console.log(`[Relayer Service] Gas estimate: ${gasEstimate.toString()}`);
+    const alreadyMinted = await deployedContract.hasMinted(attendee);
+    if (alreadyMinted)
+      throw new AppError("Address has already minted a certificate", 400);
 
-    // Send the transaction to the blockchain with a 20% gas buffer.
-    console.log(`[Relayer Service] Submitting mint transaction...`);
-    const tx = await contract.mint(attendee, merkleProof, {
-      gasLimit: gasEstimate.mul(12).div(10),
+    const tx = await deployedContract.mint(attendee, merkleProof, {
+      from: relayerWallet.address,
     });
 
-    console.log(`[Relayer Service] Transaction sent. Hash: ${tx.hash}`);
+    await tx.wait();
+
     return tx.hash;
   } catch (error) {
-    console.error(`[Relayer Service] Transaction failed:`, error.message);
-    // Re-throw the error with a more specific message for the route handler to catch.
-    const reason = error.reason || "Transaction reverted with no reason.";
-    throw new Error(`Failed to submit transaction: ${reason}`);
+    throw new AppError(error.message, 500);
   }
 }
 
-module.exports = {
-  mintNFT,
-};
+module.exports = mintNFT;

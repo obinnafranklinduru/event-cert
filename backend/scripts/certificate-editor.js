@@ -2,7 +2,6 @@ const { createCanvas, loadImage, registerFont } = require("canvas");
 const fs = require("fs");
 const path = require("path");
 
-// Paths
 const inputImage = path.join(__dirname, "..", "assets", "certificate.png");
 const outputImage = path.join(
   __dirname,
@@ -15,9 +14,7 @@ const outputImage = path.join(
 // Register your downloaded Google Font (.ttf file placed in assets/fonts)
 registerFont(
   path.join(__dirname, "..", "assets", "fonts", "GreatVibes-Regular.ttf"),
-  {
-    family: "Great Vibes",
-  }
+  { family: "Great Vibes" }
 );
 
 async function editCertificate({

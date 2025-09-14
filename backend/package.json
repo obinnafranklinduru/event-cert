@@ -4,6 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "dev": "nodemon src/index.js",
     "start:signer": "node signer/index.js",
     "start:relayer": "node relayer/index.js",
     "dev:signer": "nodemon --watch signer -e js,json --exec \"node signer/index.js\"",

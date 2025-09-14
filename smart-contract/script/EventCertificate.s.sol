@@ -13,25 +13,25 @@ contract DeployEventCertificate is Script {
     // These values should be configured before running the script.
 
     // The trusted relayer address that will pay gas for mints.
-    address constant RELAYER_ADDRESS = address(0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266);
+    address constant RELAYER_ADDRESS = address(0x7aC2494Eb7d6e507283c24EcE73cB736aDfb2b82);
 
     // The base URI pointing to your IPFS metadata folder."
-    string constant BASE_URI = "ipfs://QmYourMetadataFolderCID/";
+    string constant BASE_URI = "https://ipfs.io/ipfs/QmcGo4zBspomrk4Moun4WRdjXmaB6Psp1qF4EPMaqHmH7F/";
 
     // How many seconds from the deployment time the minting window should open.
-    uint256 constant MINT_DELAY_SECONDS = 60; // 1 minute from deployment time
+    uint256 constant MINT_DELAY_SECONDS = 5; //5 seconds from deployment time
 
     /// @notice Deploys the EventCertificate contract.
     /// @dev Reads the deployer's private key from the .env file and the Merkle Root from merkleRoot.txt.
     function run() external returns (EventCertificate) {
-        // --- 1. Load Deployment Configuration ---
+        // --- Load Deployment Configuration ---
         // Reads the private key for the deployer wallet from the .env file.
-        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY_DEPLOYER");
+        uint256 deployerPrivateKey = vm.envUint("DEPLOYER_PRIVATE_KEY");
         if (deployerPrivateKey == 0) {
-            revert("PRIVATE_KEY_DEPLOYER not set in .env file");
+            revert("DEPLOYER_PRIVATE_KEY not set in .env file");
         }
 
-        // --- 2. Read Off-Chain Data ---
+        // ---  Read Off-Chain Data ---
         // Reads the generated Merkle Root from the file system.
         // This file must be created by your `generate-merkle.js` script first.
         string memory merkleRootFromFile = vm.readFile("./merkleRoot.txt");
@@ -40,11 +40,11 @@ contract DeployEventCertificate is Script {
             revert("Failed to read merkleRoot.txt or file is empty");
         }
 
-        // --- 3. Calculate Dynamic Constructor Arguments ---
+        // ---  Calculate Dynamic Constructor Arguments ---
         // Set the minting start time based on the current block timestamp plus a delay.
         uint256 mintStartTime = block.timestamp + MINT_DELAY_SECONDS;
 
-        // --- 4. Deploy the Contract ---
+        // --- Deploy the Contract ---
         // Starts broadcasting transactions from the deployer's wallet.
         vm.startBroadcast(deployerPrivateKey);
 

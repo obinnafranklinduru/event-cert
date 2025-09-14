@@ -1,7 +1,7 @@
 const fs = require("fs");
 const path = require("path");
+const { AppError } = require("../middleware/errorHandler");
 
-// --- Merkle Tree Data Loading ---
 const MERKLE_TREE_PATH = path.join(
   __dirname,
   "..",
@@ -9,24 +9,18 @@ const MERKLE_TREE_PATH = path.join(
   "merkleData",
   "merkleTree.json"
 );
+
 let merkleTreeData = {};
 
 try {
   if (fs.existsSync(MERKLE_TREE_PATH)) {
     const fileContent = fs.readFileSync(MERKLE_TREE_PATH, "utf8");
     merkleTreeData = JSON.parse(fileContent);
-    console.log(
-      `Merkle tree data loaded successfully from ${MERKLE_TREE_PATH}`
-    );
   } else {
-    console.warn(
-      `Warning: Merkle tree file not found at ${MERKLE_TREE_PATH}. The /get-proof endpoint will not work.`
-    );
-    console.warn("Run `npm run generate-merkle` to create it.");
+    throw new AppError("Merkle tree data file not found", 500);
   }
 } catch (error) {
-  console.error(`Failed to load or parse Merkle tree data:`, error);
-  process.exit(1);
+  throw new AppError(error.message, 500);
 }
 
 /**
@@ -35,18 +29,19 @@ try {
  * @returns {string[] | null} The Merkle proof as an array of hex strings, or null if the address is not found.
  */
 function getProofForAddress(address) {
-  // Addresses in the merkle tree are case-sensitive, but wallet addresses can vary.
-  // We search for a case-insensitive match to be robust.
-  const matchingAddress = Object.keys(merkleTreeData).find(
-    (key) => key.toLowerCase() === address.toLowerCase()
-  );
+  try {
+    if (!address) throw new AppError("Address parameter is required", 400);
 
-  if (matchingAddress) {
-    return merkleTreeData[matchingAddress];
+    // Addresses in the merkle tree are case-sensitive, but wallet addresses can vary.
+    // We search for a case-insensitive match to be robust.
+    const matchingAddress = Object.keys(merkleTreeData).find(
+      (key) => key.toLowerCase() === address.toLowerCase()
+    );
+
+    return matchingAddress ? merkleTreeData[matchingAddress] : null;
+  } catch (error) {
+    throw new AppError(error.message, 500);
   }
-  return null;
 }
 
-module.exports = {
-  getProofForAddress,
-};
+module.exports = getProofForAddress;

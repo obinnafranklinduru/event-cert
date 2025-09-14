@@ -1,28 +1,27 @@
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
+const path = require("path");
 const apiRoutes = require("./routes/api");
+const { errorHandler } = require("./middleware/errorHandler");
 
-// --- Server Setup ---
 const app = express();
 const PORT = process.env.PORT || 8000;
 
-// --- Middleware ---
-// Enable Cross-Origin Resource Sharing (CORS) for all routes.
 app.use(cors());
-// Enable the Express middleware to parse JSON-formatted request bodies.
 app.use(express.json());
 
-// --- API Routes ---
-// All API routes are prefixed with '/api'.
-app.use("/api", apiRoutes);
+const reactBuildPath = path.join(__dirname, "..", "..", "frontend", "dist");
+app.use(express.static(reactBuildPath));
 
-// --- Root Endpoint ---
-app.get("/", (req, res) => {
-  res.send("Event Certificate Backend is running!");
+app.use("/api", apiRoutes);
+app.use((req, res, next) => {
+  if (req.path.startsWith("/api")) return next();
+  res.sendFile(path.join(reactBuildPath, "index.html"));
 });
 
-// --- Start Server ---
+app.use(errorHandler);
+
 app.listen(PORT, () => {
   console.log(`Server is listening on port ${PORT}`);
   console.log(`Local: http://localhost:${PORT}`);
