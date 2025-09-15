@@ -11,7 +11,6 @@ const outputImage = path.join(
   "certificate_edited.png"
 );
 
-// Register your downloaded Google Font (.ttf file placed in assets/fonts)
 registerFont(
   path.join(__dirname, "..", "assets", "fonts", "GreatVibes-Regular.ttf"),
   { family: "Great Vibes" }
