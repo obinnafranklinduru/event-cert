@@ -60,6 +60,7 @@ const mintCertificate = async (req, res, next) => {
 
     const normalizedAddress = getAddress(attendee);
     const transactionHash = await mintNFT(normalizedAddress, merkleProof);
+    console.log("show", transactionHash);
 
     if (!transactionHash)
       return next(new AppError("Minting transaction failed", 500));

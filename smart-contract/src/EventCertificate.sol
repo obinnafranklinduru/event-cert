@@ -70,7 +70,7 @@ contract EventCertificate is ERC721, Ownable {
         if (hasMinted[attendee]) revert AlreadyMinted();
 
         // Verify that the attendee is on the whitelist using their Merkle proof.
-        bytes32 leaf = keccak256(bytes.concat(keccak256(abi.encode(attendee))));
+        bytes32 leaf = keccak256(abi.encode(attendee));   
         if (!MerkleProof.verify(merkleProof, merkleRoot, leaf)) {
             revert InvalidProof();
         }

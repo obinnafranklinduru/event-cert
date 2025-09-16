@@ -34,7 +34,7 @@ contract EventCertificateFuzzTest is Test {
         // Generate Merkle tree from the whitelist using Murky
         leaves = new bytes32[](WHITELIST_SIZE);
         for (uint256 i = 0; i < WHITELIST_SIZE; i++) {
-            leaves[i] = keccak256(bytes.concat(keccak256(abi.encode(whitelist[i]))));
+            leaves[i] = keccak256(abi.encode(whitelist[i]));
         }
         merkleRoot = merkleTree.getRoot(leaves);
 

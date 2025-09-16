@@ -27,8 +27,8 @@ contract EventCertificateIntegrationTest is Test {
         merkleTree = new Merkle();
 
         bytes32[] memory leaves = new bytes32[](2);
-        leaves[0] = keccak256(bytes.concat(keccak256(abi.encode(alice))));
-        leaves[1] = keccak256(bytes.concat(keccak256(abi.encode(bob))));
+        leaves[0] = keccak256(abi.encode(alice));
+        leaves[1] = keccak256(abi.encode(bob));
 
         merkleRoot = merkleTree.getRoot(leaves);
         proofForAlice = merkleTree.getProof(leaves, 0);
@@ -73,8 +73,8 @@ contract EventCertificateIntegrationTest is Test {
         address eve = makeAddr("eve");
         address adam = makeAddr("adam");
         bytes32[] memory newLeaves = new bytes32[](2);
-        newLeaves[0] = keccak256(bytes.concat(keccak256(abi.encode(eve))));
-        newLeaves[1] = keccak256(bytes.concat(keccak256(abi.encode(adam))));
+        newLeaves[0] = keccak256(abi.encode(eve));
+        newLeaves[1] = keccak256(abi.encode(adam));
         bytes32 newMerkleRoot = merkleTree.getRoot(newLeaves);
         bytes32[] memory proofForEve = merkleTree.getProof(newLeaves, 0);
 

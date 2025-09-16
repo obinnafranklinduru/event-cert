@@ -29,8 +29,8 @@ contract EventCertificateTest is Test {
 
         // 1. Create a sample whitelist and Merkle tree using a library
         bytes32[] memory leaves = new bytes32[](2);
-        leaves[0] = keccak256(bytes.concat(keccak256(abi.encode(alice))));
-        leaves[1] = keccak256(bytes.concat(keccak256(abi.encode(bob))));
+        leaves[0] = keccak256(abi.encode(alice));
+        leaves[1] = keccak256(abi.encode(bob));
 
         merkleRoot = merkleTree.getRoot(leaves);
         proofForAlice = merkleTree.getProof(leaves, 0);
