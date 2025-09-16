@@ -50,14 +50,12 @@ async function generateMerkle() {
   // 2. Create leaf nodes for the Merkle tree
   // Each leaf is the keccak256 hash of the attendee's address.
   const leaves = addresses.map((addr) => {
-    // Match the contract's exact calculation: keccak256(bytes.concat(keccak256(abi.encode(attendee))))
+    // SINGLE HASHING: Match OpenZeppelin's standard
     const encoded = ethers.AbiCoder.defaultAbiCoder().encode(
       ["address"],
       [addr]
     );
-    const innerHash = ethers.keccak256(encoded);
-    const leaf = ethers.keccak256(ethers.concat([innerHash]));
-    return leaf;
+    return ethers.keccak256(encoded);
   });
 
   // 3. Build the Merkle tree
