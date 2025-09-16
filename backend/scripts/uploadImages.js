@@ -1,4 +1,5 @@
 require("dotenv").config();
+const fs = require("fs");
 const path = require("path");
 const pinataSDK = require("@pinata/sdk");
 
@@ -8,6 +9,12 @@ const CONFIG = {
   pinataApiKey: process.env.PINATA_API_KEY,
   pinataSecretKey: process.env.PINATA_API_SECRET,
 };
+
+const IPFS_IMAGE_CID_OUTPUT_DIR = path.join(__dirname, "..", "ipfsCID");
+const IPFS_IMAGE_CID_PATH = path.join(
+  IPFS_IMAGE_CID_OUTPUT_DIR,
+  "imageCID.txt"
+);
 
 async function uploadImageFolder() {
   console.log("--- Starting Image Folder Upload ---");
@@ -30,11 +37,16 @@ async function uploadImageFolder() {
     });
 
     const imageFolderCID = result.IpfsHash;
+
+    if (!fs.existsSync(IPFS_IMAGE_CID_OUTPUT_DIR)) {
+      fs.mkdirSync(IPFS_IMAGE_CID_OUTPUT_DIR, { recursive: true });
+    }
+
+    fs.writeFileSync(IPFS_IMAGE_CID_PATH, imageFolderCID);
+    console.log(`Image IPFS CID saved to: ${IPFS_IMAGE_CID_PATH}`);
+
     console.log(`\n--- Image Upload Complete! ---`);
     console.log(`Image Folder CID: ${imageFolderCID}`);
-    console.log(`\nIMPORTANT: Copy this CID and add it to your .env file as:`);
-    console.log(`IMAGE_FOLDER_CID=${imageFolderCID}`);
-    console.log("\nThen, run the `generateMetadata.js` script.");
   } catch (error) {
     console.error("An error occurred during the image upload process:", error);
   }

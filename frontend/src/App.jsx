@@ -1,79 +1,148 @@
-import React from "react";
-import { useAccount } from "wagmi";
-import { useAppKit } from "@reown/appkit/react";
-import Minter from "./components/Minter";
-
-console.log("📱 App.jsx loading...");
+import React, { useEffect } from "react";
+import { useWallet } from "./hooks/useWallet.js";
+import { useEligibility } from "./hooks/useEligibility.js";
+import { useClaim } from "./hooks/useClaim.js";
+import WalletConnectButton from "./components/WalletConnectButton.jsx";
+import ClaimStatus from "./components/ClaimStatus.jsx";
+import { getExplorerUrl } from "./utils/formatters.js";
+import "./App.css";
 
 function App() {
-  console.log("🔄 App component rendering...");
+  const {
+    wallet,
+    isConnecting,
+    isConnected,
+    address,
+    formattedAddress,
+    connect,
+    disconnect,
+    error: walletError,
+  } = useWallet();
 
-  // Hooks must be called at the top level - never inside conditions
-  const { address, isConnected } = useAccount();
-  const { open } = useAppKit();
+  const {
+    isLoading: isLoadingProof,
+    isEligible,
+    proof,
+    error: eligibilityError,
+    statusMessage: proofStatusMessage,
+    checkEligibility,
+    reset: resetEligibility,
+    retry: retryEligibility,
+  } = useEligibility();
 
-  console.log("👛 Wallet state:", { address, isConnected });
+  const {
+    isClaiming,
+    txHash,
+    hasClaimed,
+    error: claimError,
+    statusMessage: claimStatusMessage,
+    claimCertificate,
+    reset: resetClaim,
+    retry: retryClaim,
+  } = useClaim();
 
-  const handleConnect = () => {
-    console.log("🔗 Connect button clicked");
-    try {
-      open();
-    } catch (error) {
-      console.error("❌ Error opening wallet modal:", error);
+  // Check eligibility when wallet connects
+  useEffect(() => {
+    if (address && !isEligible && !hasClaimed) {
+      checkEligibility(address);
+    }
+  }, [address, isEligible, hasClaimed, checkEligibility]);
+
+  // Handle wallet connection
+  const handleConnect = async () => {
+    resetEligibility();
+    resetClaim();
+    await connect();
+  };
+
+  // Handle wallet disconnection
+  const handleDisconnect = async () => {
+    resetEligibility();
+    resetClaim();
+    await disconnect();
+  };
+
+  // Handle claim
+  const handleClaim = async () => {
+    if (address && proof) {
+      await claimCertificate(address, proof);
     }
   };
 
-  // Handle any rendering errors
-  try {
-    return (
-      <div className="app">
+  // Handle retry for eligibility
+  const handleRetryEligibility = async () => {
+    if (address) {
+      await retryEligibility(address);
+    }
+  };
+
+  // Handle retry for claim
+  const handleRetryClaim = async () => {
+    if (address && proof) {
+      await retryClaim(address, proof);
+    }
+  };
+
+  // Get current error
+  const currentError = walletError || eligibilityError || claimError;
+
+  // Get current status message
+  const currentStatusMessage = claimStatusMessage || proofStatusMessage;
+
+  return (
+    <div className="cosmic-container">
+      <div className="stars"></div>
+      <div className="stars2"></div>
+      <div className="stars3"></div>
+
+      <div className="main-content">
         <header className="header">
-          <h1>libeta Good</h1>
-          {!isConnected ? (
-            <button onClick={handleConnect} className="btn btn-primary">
-              Connect Wallet
-            </button>
-          ) : (
-            <div className="address">
-              Connected: {address?.slice(0, 6)}...{address?.slice(-4)}
-            </div>
-          )}
+          <h1 className="title">
+            <span className="title-text">Libertas Alpha</span>
+            <span className="title-glow">✨</span>
+          </h1>
+          <p className="subtitle">Mint your NFT Certificate</p>
         </header>
 
-        <main className="main-content">
+        <div className="claim-card">
           {!isConnected ? (
-            <div className="minter-container">
-              <h2 className="minter-title">Welcome to Certificate Minting</h2>
-              <p className="status-message status-info">
-                Connect your wallet to check your eligibility and mint your
-                attendance certificate.
-              </p>
-              <button onClick={handleConnect} className="btn btn-primary">
-                Connect Wallet to Get Started
-              </button>
-            </div>
+            <WalletConnectButton
+              isConnecting={isConnecting}
+              onClick={handleConnect}
+            />
           ) : (
-            <Minter account={address} />
-          )}
-        </main>
+            <div className="connected-section">
+              <div className="wallet-info">
+                <div className="wallet-address">{formattedAddress}</div>
+                <button onClick={handleDisconnect} className="disconnect-btn">
+                  Disconnect
+                </button>
+              </div>
 
-        <footer className="footer">
-          <p>
-            &copy; 2024 Libeta Good. Secure certificate minting on the
-            blockchain.
-          </p>
-        </footer>
+              <ClaimStatus
+                isEligible={isEligible}
+                isLoadingProof={isLoadingProof}
+                isClaiming={isClaiming}
+                hasClaimed={hasClaimed}
+                txHash={txHash}
+                error={currentError}
+                statusMessage={currentStatusMessage}
+                onClaim={handleClaim}
+                onRetry={
+                  eligibilityError
+                    ? handleRetryEligibility
+                    : claimError
+                    ? handleRetryClaim
+                    : null
+                }
+                getExplorerUrl={getExplorerUrl}
+              />
+            </div>
+          )}
+        </div>
       </div>
-    );
-  } catch (error) {
-    console.error("❌ Error rendering App component:", error);
-    return (
-      <div style={{ padding: "20px", color: "white", background: "#1e1144" }}>
-        <h1>Error Loading App</h1>
-        <p>Check the console for details. Error: {error.message}</p>
-      </div>
-    );
-  }
+    </div>
+  );
 }
 
 export default App;

@@ -1,4 +1,4 @@
-const ethers = require("ethers");
+const { isAddress, getAddress } = require("ethers");
 const getProofForAddress = require("../services/proofService");
 const mintNFT = require("../services/relayerService");
 const { AppError } = require("../middleware/errorHandler");
@@ -16,10 +16,10 @@ const getProof = (req, res, next) => {
     if (!address)
       return next(new AppError("Address query parameter is required", 400));
 
-    if (!ethers.utils.isAddress(address))
+    if (!isAddress(address))
       return next(new AppError("Invalid Ethereum address format", 400));
 
-    const normalizedAddress = ethers.utils.getAddress(address);
+    const normalizedAddress = getAddress(address);
     const proof = getProofForAddress(normalizedAddress);
 
     if (!proof)
@@ -50,7 +50,7 @@ const mintCertificate = async (req, res, next) => {
         new AppError("Missing required fields: attendee and merkleProof", 400)
       );
 
-    if (!ethers.utils.isAddress(attendee))
+    if (!isAddress(attendee))
       return next(
         new AppError("Invalid Ethereum address format for attendee", 400)
       );
@@ -58,7 +58,7 @@ const mintCertificate = async (req, res, next) => {
     if (!Array.isArray(merkleProof) || merkleProof.length === 0)
       return next(new AppError("Invalid merkle proof format", 400));
 
-    const normalizedAddress = ethers.utils.getAddress(attendee);
+    const normalizedAddress = getAddress(attendee);
     const transactionHash = await mintNFT(normalizedAddress, merkleProof);
 
     if (!transactionHash)

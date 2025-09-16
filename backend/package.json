@@ -4,12 +4,16 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "nodemon src/index.js",
-    "start:signer": "node signer/index.js",
-    "start:relayer": "node relayer/index.js",
-    "dev:signer": "nodemon --watch signer -e js,json --exec \"node signer/index.js\"",
-    "dev:relayer": "nodemon --watch relayer -e js,json --exec \"node relayer/index.js\"",
-    "gen:assets": "node scripts/generate_assets.js"
+    "dev": "nodemon ./src/index.js",
+    "start": "node ./src/index.js",
+    "generate:assets": "node ./scripts/generateAssets.js",
+    "upload:images": "node ./scripts/uploadImages.js",
+    "generate:metadata": "node ./scripts/generateMetadata.js",
+    "upload:metadata": "node ./scripts/uploadMetadata.js",
+    "generate:merkle": "node ./scripts/generateMerkle.js",
+    "generate:all": "npm run generate:assets && npm run upload:images && npm run generate:metadata",
+    "upload:all": "npm run upload:metadata && npm run generate:merkle",
+    "full:pipeline": "npm run generate:assets && npm run upload:images && npm run generate:metadata && npm run upload:metadata && npm run generate:merkle"
   },
   "keywords": [],
   "author": "",

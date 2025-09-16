@@ -1,243 +1,192 @@
-# Web3 Certificate Minter
+# 🌟 Cosmic Claim dApp
 
-A modern, responsive React application for minting attendance certificates on the blockchain. Built with cutting-edge Web3 technologies and featuring an engaging user experience.
-
-## 🚀 Tech Stack
-
-- **React 18** with Vite for blazing-fast development
-- **Wagmi v2** for Web3 wallet integration
-- **Viem** for Ethereum interactions
-- **@reown/appkit** for wallet connection UI
-- **@tanstack/react-query** for server state management
-- **Axios** for API calls
-- **Responsive CSS** with purple gradient theme
+A beautiful, modern React dApp for claiming NFT certificates with cosmic elegance and seamless UX.
 
 ## ✨ Features
 
-- 🔐 **Secure Wallet Connection**: Connect with multiple wallet providers
-- 📱 **Fully Responsive**: Optimized for mobile, tablet, and desktop
-- 🎨 **Modern UI**: Beautiful purple gradient theme with glassmorphism effects
-- ⚡ **Real-time Updates**: Reactive state management with React Query
-- 🔄 **Engaging Loading States**: Rotating status messages during server "warm-up"
-- 🔗 **Block Explorer Integration**: Direct links to view transactions
-- 🛡️ **Error Handling**: Comprehensive error states and retry mechanisms
+- **Cosmic Elegance**: Dark mode with glowing accents and smooth animations
+- **Multi-Wallet Support**: Connect with MetaMask, WalletConnect, and more
+- **Responsive Design**: Perfect experience on mobile and desktop
+- **Real-time Status**: Engaging status messages during transactions
+- **Error Handling**: User-friendly error messages and retry functionality
+- **Modular Architecture**: Clean, maintainable code structure
 
-## 🏗️ Project Structure
+## 🚀 Quick Start
+
+### Prerequisites
+- Node.js 16+ and npm
+- A WalletConnect Project ID ([Get one here](https://cloud.walletconnect.com/))
+
+### Installation
+
+1. **Clone and install dependencies:**
+```bash
+git clone <your-repo>
+cd frontend
+npm install
+```
+
+2. **Set up environment variables:**
+```bash
+cp .env.example .env
+```
+
+Edit `.env` with your actual values:
+```env
+VITE_WALLETCONNECT_PROJECT_ID=your_project_id_here
+VITE_CONTRACT_ADDRESS=your_contract_address
+VITE_API_BASE_URL=http://localhost:8000/api
+```
+
+3. **Start development server:**
+```bash
+npm run dev
+```
+
+Visit `http://localhost:5173` 🎉
+
+### Build for Production
+
+```bash
+npm run build
+```
+
+The build outputs to `dist/` which your backend serves.
+
+## 📁 Project Structure
 
 ```
 src/
-├── components/
-│   └── Minter.jsx          # Core minting logic with React Query
-├── config/
-│   ├── api.js              # Axios configuration and API methods
-│   └── walletconnect.js    # WalletConnect and utility functions
-├── App.jsx                 # Main layout and wallet connection
-├── main.jsx                # Provider setup (Wagmi, React Query, AppKit)
-└── App.css                 # Responsive styling with purple theme
+├── components/          # Reusable UI components
+│   ├── WalletConnectButton.jsx
+│   ├── ClaimStatus.jsx
+│   └── CosmicLoader.jsx
+├── hooks/              # Custom React hooks
+│   ├── useWallet.js
+│   ├── useEligibility.js
+│   └── useClaim.js
+├── services/           # API and external services
+│   ├── api.js
+│   └── wallet.js
+├── utils/              # Helper functions and constants
+│   ├── constants.js
+│   ├── formatters.js
+│   └── messages.js
+├── App.jsx            # Main application component
+├── App.css           # Cosmic theme styles
+└── main.jsx         # Application entry point
 ```
 
-## 🛠️ Setup Instructions
+## 🎨 Design System
 
-### 1. Install Dependencies
+### Colors
+- **Primary**: `#64ffda` (Cosmic Cyan)
+- **Secondary**: `#7c4dff` (Cosmic Purple)  
+- **Accent**: `#ff6b9d` (Cosmic Pink)
+- **Background**: Dark gradient (`#0a0a23` → `#2d1b69`)
 
-```bash
-npm install @reown/appkit @reown/appkit-adapter-wagmi wagmi viem @tanstack/react-query axios react react-dom
-```
+### Typography
+- **Primary**: Inter (Google Fonts)
+- **Monospace**: JetBrains Mono (addresses, hashes)
 
-### 2. Get Your Project ID
+### Components
+- **Glassmorphism cards** with blur effects
+- **Animated backgrounds** with moving stars
+- **Smooth transitions** and hover effects
+- **Pulse animations** for interactive elements
 
-1. Visit [Reown Cloud](https://cloud.reown.com)
-2. Create a new project
-3. Copy your Project ID
+## 🔧 Configuration
 
-### 3. Configure the Application
-
-**Update `src/main.jsx`:**
+### Networks
+The dApp supports Base and Base Sepolia networks:
 
 ```javascript
-const projectId = "YOUR_PROJECT_ID_HERE"; // Replace with your actual project ID
+// Configured in src/utils/constants.js
+export const NETWORKS = {
+  BASE_MAINNET: { id: '0x2105', name: 'Base' },
+  BASE_SEPOLIA: { id: '0x14a33', name: 'Base Sepolia' }
+};
 ```
 
-**Update `src/config/api.js`:**
+### API Endpoints
+- `GET /api/get-proof?address=<wallet_address>` - Get Merkle proof
+- `POST /api/mint` - Submit mint transaction
 
+## 🎭 User Journey
+
+1. **Connect Wallet** → Smooth wallet connection with loading states
+2. **Check Eligibility** → Fetch Merkle proof with cosmic status messages  
+3. **Claim Certificate** → Submit transaction with real-time updates
+4. **Success** → Celebration with block explorer link
+
+## 🛠️ Development
+
+### Available Scripts
+- `npm run dev` - Start development server
+- `npm run build` - Build for production
+- `npm run preview` - Preview production build
+- `npm run lint` - Lint code
+
+### Adding New Components
+1. Create component in `src/components/`
+2. Add styles using CSS-in-JS or CSS modules
+3. Export from component file
+4. Import in parent components
+
+### Custom Hooks Pattern
 ```javascript
-baseURL: process.env.NODE_ENV === "production"
-  ? "https://your-production-api.com" // Replace with your production API URL
-  : "http://localhost:3001"; // Your local backend URL
+// Example custom hook
+export const useCustomHook = () => {
+  const [state, setState] = useState();
+  
+  const action = useCallback(() => {
+    // Hook logic
+  }, []);
+  
+  return { state, action };
+};
 ```
 
-### 4. Environment Variables (Optional)
+## 🌐 Browser Support
 
-Create a `.env` file:
+- Chrome/Edge 90+
+- Firefox 88+  
+- Safari 14+
+- Mobile browsers (iOS Safari, Android Chrome)
 
-```
-VITE_REOWN_PROJECT_ID=your_project_id_here
-VITE_API_BASE_URL=http://localhost:3001
-```
+## 📱 Mobile Optimization
 
-Then update the configuration files to use these variables:
+- Responsive breakpoints at 640px and 480px
+- Touch-friendly button sizes (min 44px)
+- Optimized animations for mobile performance
+- Backdrop blur fallbacks for older devices
 
-```javascript
-const projectId = import.meta.env.VITE_REOWN_PROJECT_ID;
-```
+## 🔐 Security Features
 
-### 5. Run the Application
+- Address validation and normalization
+- Error boundary components
+- Secure environment variable handling
+- No localStorage usage (as per Claude.ai requirements)
 
-```bash
-# Development
-npm run dev
+## 🎯 Performance
 
-# Build for production
-npm run build
-
-# Preview production build
-npm run preview
-```
-
-## 🔧 Backend API Requirements
-
-Your backend needs to implement these endpoints:
-
-### GET `/api/get-proof?address={user_address}`
-
-**Response for eligible user:**
-
-```json
-{
-  "proof": ["0x123...", "0x456..."],
-  "eligible": true
-}
-```
-
-**Response for non-eligible user:**
-
-```json
-{
-  "eligible": false,
-  "message": "Address not found in whitelist"
-}
-```
-
-### POST `/api/mint`
-
-**Request Body:**
-
-```json
-{
-  "attendee": "0x742d35Cc6635C0532925a3b8D20d1c0e15afe5B7",
-  "merkleProof": ["0x123...", "0x456..."]
-}
-```
-
-**Response:**
-
-```json
-{
-  "transactionHash": "0x789abc...",
-  "success": true
-}
-```
-
-## 🎨 Customization
-
-### Theme Colors
-
-The purple gradient theme can be customized in `App.css`:
-
-```css
-/* Main gradient */
-background: linear-gradient(135deg, #4c2a85, #1e1144);
-
-/* Accent color */
-color: #bb86fc;
-
-/* Button gradients */
-background: linear-gradient(135deg, #bb86fc, #6200ea);
-```
-
-### Loading Messages
-
-Customize the engaging loading messages in `Minter.jsx`:
-
-```javascript
-const LOADING_MESSAGES = [
-  "🌟 Your custom message...",
-  "✨ Another engaging message...",
-  // Add more messages
-];
-```
-
-### Supported Networks
-
-Configure networks in `main.jsx`:
-
-```javascript
-import { mainnet, sepolia, polygon } from "wagmi/chains";
-
-// Add networks to the configuration
-networks: [mainnet, sepolia, polygon];
-```
-
-## 📱 Responsive Design
-
-The application uses a mobile-first approach with breakpoints:
-
-- **Mobile**: < 480px
-- **Tablet**: 768px+
-- **Desktop**: 1024px+
-- **Large Desktop**: 1440px+
-
-## 🔒 Security Features
-
-- **Input validation** for all API calls
-- **Error boundaries** for graceful error handling
-- **Request timeouts** to prevent hanging requests
-- **Retry mechanisms** with exponential backoff
-- **HTTPS enforcement** in production
-
-## 🐛 Troubleshooting
-
-### Common Issues
-
-1. **"Project ID not found"**
-
-   - Make sure you've replaced `YOUR_PROJECT_ID_HERE` with your actual Reown project ID
-
-2. **API connection errors**
-
-   - Check that your backend is running on the correct port
-   - Verify the API base URL in `config/api.js`
-
-3. **Wallet connection issues**
-
-   - Ensure you're using a supported browser with a Web3 wallet
-   - Check that your wallet is connected to the correct network
-
-4. **Build errors**
-   - Run `npm install` to ensure all dependencies are installed
-   - Clear node_modules and reinstall if needed: `rm -rf node_modules package-lock.json && npm install`
-
-## 📄 License
-
-This project is licensed under the MIT License.
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Test thoroughly
-5. Submit a pull request
+- Code splitting with dynamic imports
+- Optimized bundle sizes
+- Lazy loading of wallet connections
+- Efficient re-renders with useMemo/useCallback
 
 ## 📞 Support
 
-For support, please check:
+For issues or questions:
+1. Check the browser console for errors
+2. Verify environment variables are set
+3. Ensure backend is running on expected port
+4. Check wallet connection and network
 
-1. The troubleshooting section above
-2. [Wagmi Documentation](https://wagmi.sh)
-3. [Reown AppKit Documentation](https://docs.reown.com/appkit)
-4. [React Query Documentation](https://tanstack.com/query)
+## 🚢 Deployment
+
+The app is designed to be served by your Express backend from the `frontend/dist/` folder. The backend handles routing and API endpoints while serving the React app for all non-API routes.
 
 ---
 
-Built with ❤️ using modern Web3 technologies
+**Built with cosmic love** ✨ **for the decentralized future** 🚀

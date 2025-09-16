@@ -3,3 +3,6 @@ node_modules/
 backend/signer/signer.db
 backend/relayer/relayer.db
 assets/
+merkleData/
+ipfsCID/
+
