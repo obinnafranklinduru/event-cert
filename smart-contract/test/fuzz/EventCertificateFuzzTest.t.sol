@@ -40,7 +40,8 @@ contract EventCertificateFuzzTest is Test {
 
         // Deploy contract.
         vm.prank(owner);
-        certificateContract = new EventCertificate("ipfs://CID/", relayer, block.timestamp, merkleRoot);
+        certificateContract =
+            new EventCertificate("TEST CONTRACT", "TEST", "ipfs://CID/", relayer, block.timestamp, merkleRoot);
     }
 
     /// @notice Fuzz test for the mint function.

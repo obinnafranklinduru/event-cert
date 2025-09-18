@@ -2,64 +2,52 @@
 pragma solidity ^0.8.30;
 
 import "forge-std/Script.sol";
-import "..//src/EventCertificate.sol";
+import "../src/EventCertificate.sol";
 
 /// @title Deploy EventCertificate
 /// @author Obinna Franklin Duru
 /// @notice A script to deploy the EventCertificate contract.
-/// Reads configuration from files instead of hardcoded values.
+/// All configuration values are read from the .env file.
 contract DeployEventCertificate is Script {
-    // --- Configuration File Paths ---
-    string constant MERKLE_ROOT_FILE = "./deployConfig/merkleRoot.txt";
-    string constant JSON_CID_FILE = "./deployConfig/jsonCID.txt";
-    string constant RELAYER_ADDRESS_FILE = "./deployConfig/relayerAddress.txt";
-    string constant MINT_DELAY_FILE = "./deployConfig/mintDelay.txt";
-
     /// @notice Deploys the EventCertificate contract.
-    /// @dev Reads all configuration from files and the deployer's private key from .env
     function run() external returns (EventCertificate) {
-        // --- Load Deployment Configuration ---
+        // --- Load Deployment Configuration from .env ---
         uint256 deployerPrivateKey = vm.envUint("DEPLOYER_PRIVATE_KEY");
         if (deployerPrivateKey == 0) {
             revert("DEPLOYER_PRIVATE_KEY not set in .env file");
         }
 
-        // --- Read Configuration from Files ---
-        // Read Merkle Root
-        bytes32 merkleRoot = bytes32(vm.parseBytes32(vm.readFile(MERKLE_ROOT_FILE)));
+        string memory name = vm.envString("NFT_NAME");
+        string memory symbol = vm.envString("NFT_SYMBOL");
+
+        bytes32 merkleRoot = vm.envBytes32("MERKLE_ROOT");
         if (merkleRoot == bytes32(0)) {
-            revert("Failed to read merkleRoot.txt");
+            revert("MERKLE_ROOT not set in .env file");
         }
 
-        // Read JSON CID
-        string memory jsonCID = vm.readLine(JSON_CID_FILE);
+        string memory jsonCID = vm.envString("JSON_CID");
         if (bytes(jsonCID).length == 0) {
-            revert("Failed to read jsonCID.txt");
+            revert("JSON_CID not set in .env file");
         }
         string memory baseURI = string.concat("https://ipfs.io/ipfs/", jsonCID, "/");
 
-        // Read Relayer Address
-        address relayerAddress = vm.parseAddress(vm.readLine(RELAYER_ADDRESS_FILE));
+        address relayerAddress = vm.envAddress("RELAYER_ADDRESS");
         if (relayerAddress == address(0)) {
-            revert("Failed to read relayerAddress.txt");
+            revert("RELAYER_ADDRESS not set in .env file");
         }
 
-        // Read Mint Delay (optional)
-        uint256 mintDelaySeconds = 5; // default
-        if (vm.exists(MINT_DELAY_FILE)) {
-            mintDelaySeconds = vm.parseUint(vm.readLine(MINT_DELAY_FILE));
-        }
+        uint256 mintDelaySeconds = vm.envOr("MINT_DELAY", uint256(5));
 
-        // --- Calculate Dynamic Constructor Arguments ---
+        // --- Calculate Mint Start Time ---
         uint256 mintStartTime = block.timestamp + mintDelaySeconds;
 
-        // --- Deploy the Contract ---
+        // --- Deploy Contract ---
         vm.startBroadcast(deployerPrivateKey);
         EventCertificate certificateContract =
-            new EventCertificate(baseURI, relayerAddress, mintStartTime, merkleRoot);
+            new EventCertificate(name, symbol, baseURI, relayerAddress, mintStartTime, merkleRoot);
         vm.stopBroadcast();
 
-        // --- Log Deployment Information ---
+        // --- Log Deployment Info ---
         console.log("==================================");
         console.log("EventCertificate Deployed!");
         console.log("  - Address:", address(certificateContract));

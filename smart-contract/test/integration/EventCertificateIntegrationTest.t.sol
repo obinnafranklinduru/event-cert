@@ -35,7 +35,8 @@ contract EventCertificateIntegrationTest is Test {
         proofForBob = merkleTree.getProof(leaves, 1);
 
         vm.prank(owner);
-        certificateContract = new EventCertificate("ipfs://CID/", relayer, block.timestamp, merkleRoot);
+        certificateContract =
+            new EventCertificate("TEST CONTRACT", "TEST", "ipfs://CID/", relayer, block.timestamp, merkleRoot);
     }
 
     /// @notice Tests a full lifecycle: initial mints, an admin update, and post-update interactions.

@@ -40,14 +40,21 @@ contract EventCertificate is ERC721, Ownable {
     event BaseURIUpdated(string newBaseURI);
 
     // --- Constructor ---
+    /// @notice Initializes the contract with necessary parameters.
+    /// @param name_ The name of the ERC721 token.
+    /// @param symbol_ The symbol of the ERC721 token.
     /// @param baseURI_ The base URI for the metadata, pointing to an IPFS folder.
     /// @param relayer_ The trusted address that will pay gas fees for minting.
     /// @param mintStartTime_ The Unix timestamp when the minting window opens.
     /// @param merkleRoot_ The Merkle Root of the whitelist of eligible attendees.
-    constructor(string memory baseURI_, address relayer_, uint256 mintStartTime_, bytes32 merkleRoot_)
-        ERC721("Event Certificate", "ECERT")
-        Ownable(msg.sender)
-    {
+    constructor(
+        string memory name_,
+        string memory symbol_,
+        string memory baseURI_,
+        address relayer_,
+        uint256 mintStartTime_,
+        bytes32 merkleRoot_
+    ) ERC721(name_, symbol_) Ownable(msg.sender) {
         if (relayer_ == address(0)) revert ZeroAddress();
 
         _baseTokenURI = baseURI_;
@@ -70,7 +77,7 @@ contract EventCertificate is ERC721, Ownable {
         if (hasMinted[attendee]) revert AlreadyMinted();
 
         // Verify that the attendee is on the whitelist using their Merkle proof.
-        bytes32 leaf = keccak256(abi.encode(attendee));   
+        bytes32 leaf = keccak256(abi.encode(attendee));
         if (!MerkleProof.verify(merkleProof, merkleRoot, leaf)) {
             revert InvalidProof();
         }

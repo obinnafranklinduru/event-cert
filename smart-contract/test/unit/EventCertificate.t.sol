@@ -38,13 +38,16 @@ contract EventCertificateTest is Test {
 
         // 2. Deploy the contract
         vm.prank(owner);
-        certificateContract = new EventCertificate("ipfs://CID/", relayer, block.timestamp, merkleRoot);
+        certificateContract =
+            new EventCertificate("TEST CONTRACT", "TEST", "ipfs://CID/", relayer, block.timestamp, merkleRoot);
     }
 
     // --- Unit Tests ---
 
     // Test 1: Constructor sets initial state correctly
     function test_ConstructorSetsState() public view {
+        assertEq(certificateContract.name(), "TEST CONTRACT");
+        assertEq(certificateContract.symbol(), "TEST");
         assertEq(certificateContract.owner(), owner);
         assertEq(certificateContract.relayer(), relayer);
         assertEq(certificateContract.merkleRoot(), merkleRoot);
@@ -55,7 +58,7 @@ contract EventCertificateTest is Test {
     function test_Revert_Constructor_ZeroAddressRelayer() public {
         vm.prank(owner);
         vm.expectRevert(EventCertificate.ZeroAddress.selector);
-        new EventCertificate("ipfs://CID/", address(0), block.timestamp, merkleRoot);
+        new EventCertificate("TEST CONTRACT", "TEST", "ipfs://CID/", address(0), block.timestamp, merkleRoot);
     }
 
     // Test 2: Successful mint
