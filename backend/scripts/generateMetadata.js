@@ -6,18 +6,14 @@ const { parse } = require("csv-parse");
 // --- Configuration ---
 // This object holds all the paths and settings for the script.
 const CONFIG = {
-  // Path to the input CSV file containing attendee data.
-  csvFilePath: path.join(__dirname, "..", "attendees.csv"),
-  // Path to the output directory where personalized metadata will be saved.
-  outputDir: path.join(__dirname, "..", "assets", "metadata"),
-  // The IPFS CID of the folder containing all the personalized certificate images.
-  // Make sure this is set in your .env file.
+  csvFilePath: path.resolve(__dirname, "..", "data", "attendees.csv"),
+  outputDir: path.resolve(__dirname, "..", "output", "metadata"),
+  imageBaseUrl: process.env.IPFS_GATEWAY_URL || "https://ipfs.io/ipfs",
   imageFolderCID: process.env.IMAGE_FOLDER_CID,
-  // A generic description for all certificates.
-  description:
-    "This certificate is a permanent, non-transferable record of attendance for the BaseDev Lagos 2025 event.",
-  // The name of the event, used in the NFT name and attributes.
-  eventName: "BaseDev Lagos 2025 Certificate",
+  eventName: "Fundamental Project Management Training",
+  issuer: "Libertas Alpha Technologies",
+  eventDate: "2025-09-14",
+  format: "Virtual Workshop",
 };
 
 /**
@@ -70,19 +66,44 @@ async function generateMetadata() {
 
     // Create the metadata object.
     const metadata = {
-      name: `${CONFIG.eventName} - ${name}`,
-      description: CONFIG.description,
+      description: `Fundamental Project Management Training Soulbound Token is a non-transferable certificate awarded to ${name} for successful completion of the ${CONFIG.eventName} hosted by ${CONFIG.issuer}.`,
+      external_url: "https://libertasalpha.tech/training-certificates",
       image: imageUrl,
+      name: `${CONFIG.eventName} Certificate - ${name}`,
       attributes: [
         {
-          trait_type: "Event",
-          value: "BaseDev Lagos 2025",
-        },
-        {
-          trait_type: "Attendee",
+          trait_type: "Recipient",
           value: name,
         },
+        {
+          trait_type: "Issuer",
+          value: CONFIG.issuer,
+        },
+        {
+          trait_type: "Date of Completion",
+          value: CONFIG.eventDate,
+        },
+        {
+          trait_type: "Format",
+          value: CONFIG.format,
+        },
+        {
+          trait_type: "Token Standard",
+          value: "Soulbound (SBT)",
+        },
+        {
+          trait_type: "Wallet Address",
+          value: walletAddress,
+        },
       ],
+      certificate_details: {
+        issuing_authority: `${CONFIG.issuer} Training Division`,
+        course_title: CONFIG.eventName,
+        course_description:
+          "A comprehensive training session covering the core principles and methodologies of effective project management.",
+        completion_criteria:
+          "Attendance and participation in the full duration of the virtual training session.",
+      },
     };
 
     // 5. Save the metadata object as a new JSON file.
