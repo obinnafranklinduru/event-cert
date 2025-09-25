@@ -9,12 +9,18 @@ const CONFIG = {
   csvFilePath: path.join(__dirname, "..", "attendees.csv"),
   outputDir: path.join(__dirname, "..", "assets", "metadata"),
   imageBaseUrl: process.env.IPFS_GATEWAY_URL || "https://ipfs.io/ipfs",
-  imageFolderCID: process.env.IMAGE_FOLDER_CID,
   eventName: "Fundamental Project Management Training",
   issuer: "Libertas Alpha Technologies",
   eventDate: "2025-09-12",
   format: "Virtual Workshop",
 };
+
+const IPFS_IMAGE_CID_PATH = path.join(
+  __dirname,
+  "..",
+  "ipfsCID",
+  "imageCID.txt"
+);
 
 /**
  * Main function to generate all metadata files.
@@ -22,15 +28,14 @@ const CONFIG = {
 async function generateMetadata() {
   console.log("--- Starting Metadata Generation ---");
 
-  // 1. Validate that the Image Folder CID is set.
-  if (!CONFIG.imageFolderCID) {
-    console.error("Error: IMAGE_FOLDER_CID is not set in your .env file.");
+  if (!fs.existsSync(IPFS_IMAGE_CID_PATH)) {
     console.error(
-      "Please upload your images folder to IPFS and add the CID to your .env file."
+      `Error: Could not find imageCID.txt at ${IPFS_IMAGE_CID_PATH}`
     );
-    return; // Exit if the CID is missing.
+    return;
   }
-  console.log(`Using Image Folder CID: ${CONFIG.imageFolderCID}`);
+  const imageFolderCID = fs.readFileSync(IPFS_IMAGE_CID_PATH, "utf8").trim();
+  console.log(`Using Image Folder CID from file: ${imageFolderCID}`);
 
   // 2. Ensure the output directory exists.
   if (!fs.existsSync(CONFIG.outputDir)) {
@@ -62,7 +67,7 @@ async function generateMetadata() {
     console.log(`Generating metadata for: ${name} (${lowerCaseAddress})`);
 
     // Construct the full IPFS URL for the attendee's personalized image.
-    const imageUrl = `https://ipfs.io/ipfs/${CONFIG.imageFolderCID}/${lowerCaseAddress}.png`;
+    const imageUrl = `${CONFIG.imageBaseUrl}/${imageFolderCID}/${lowerCaseAddress}.png`;
 
     // Create the metadata object.
     const metadata = {
