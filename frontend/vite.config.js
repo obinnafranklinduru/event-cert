@@ -7,11 +7,17 @@ export default defineConfig({
   server: {
     port: 5173,
     host: true,
+    allowedHosts: [
+      "libertasalpha-event-cert-website.onrender.com",
+      "localhost",
+      "127.0.0.1",
+    ],
     proxy: {
       "/api": {
-        target: "http://localhost:8000",
+        target: "https://libertasalpha-event-cert-api.onrender.com", // Updated to your Render backend
         changeOrigin: true,
         secure: false,
+        rewrite: (path) => path.replace(/^\/api/, ""), // Remove /api prefix when proxying
       },
     },
   },
@@ -42,4 +48,6 @@ export default defineConfig({
       "@web3-onboard/walletconnect",
     ],
   },
+  // Add base URL for production deployment
+  base: process.env.NODE_ENV === "production" ? "/" : "/",
 });
