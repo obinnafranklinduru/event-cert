@@ -22,7 +22,9 @@ export const CONTRACT_ADDRESS =
   "0x142b9bCCB616F93b014bD100E4C7D266CC8b7E13";
 
 // API configuration
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
+export const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL ||
+  "https://libertasalpha-event-cert-api.onrender.com";
 
 // WalletConnect configuration
 export const WALLETCONNECT_PROJECT_ID =
@@ -72,9 +74,7 @@ export const SEO_METADATA = {
     discord: "https://discord.gg/libertasalpha",
     youtube: "https://youtube.com/@libertasalpha",
   },
-  ogImage: `${
-    import.meta.env.VITE_DAPP_URL || "http://localhost:5173"
-  }/og-image.png`,
+  ogImage: "https://www.libertasalpha.com/logo.png",
   ogImageAlt: "Libertas Alpha - Blockchain Development, Training & Analytics",
   company: {
     name: "Libertas Alpha",
@@ -86,7 +86,9 @@ export const SEO_METADATA = {
       country: "Nigeria",
     },
   },
-  explore: import.meta.env.VITE_DAPP_URL || "http://localhost:5173",
+  explore:
+    import.meta.env.VITE_DAPP_URL ||
+    "https://libertasalpha-event-cert-website.onrender.com",
 };
 
 // Status polling intervals
