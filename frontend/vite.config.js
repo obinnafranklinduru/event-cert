@@ -7,11 +7,7 @@ export default defineConfig({
   server: {
     port: 5173,
     host: true,
-    allowedHosts: [
-      "event-cert-641vxlrxt-duruobinnafranklingmailcoms-projects.vercel.app",
-      "localhost",
-      "127.0.0.1",
-    ],
+    allowedHosts: ["https://event-cert.vercel.app", "localhost", "127.0.0.1"],
     proxy: {
       "/api": {
         target: "https://libertasalpha-event-cert-api.onrender.com", // Updated to your Render backend

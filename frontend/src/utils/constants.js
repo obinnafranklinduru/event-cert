@@ -86,9 +86,7 @@ export const SEO_METADATA = {
       country: "Nigeria",
     },
   },
-  explore:
-    import.meta.env.VITE_DAPP_URL ||
-    "https://event-cert-641vxlrxt-duruobinnafranklingmailcoms-projects.vercel.app",
+  explore: import.meta.env.VITE_DAPP_URL || "https://event-cert.vercel.app/",
 };
 
 // Status polling intervals
