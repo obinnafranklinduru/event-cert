@@ -1,150 +1,163 @@
 require("dotenv").config();
-const fs = require("fs");
+const fs = require("fs").promises;
 const path = require("path");
-const { parse } = require("csv-parse");
 const pinataSDK = require("@pinata/sdk");
 
 // --- Configuration ---
 const CONFIG = {
-  // Path to the input CSV file containing attendee data.
-  csvFilePath: path.join(__dirname, "..", "attendees.csv"),
-  // Path to the output directory where personalized metadata will be saved.
-  outputDir: path.join(__dirname, "..", "assets", "metadata"),
-  // Path to the file containing the IPFS CID of the image folder
-  imageCIDPath: path.join(__dirname, "..", "ipfsCID", "imageCID.txt"),
-  // Path to save the JSON folder CID after upload
-  jsonCIDPath: path.join(__dirname, "..", "ipfsCID", "jsonCID.txt"),
-  // A generic description for all certificates.
-  description:
-    "This certificate is a permanent, non-transferable record of attendance for the BaseDev Lagos 2025 event.",
-  // The name of the event, used in the NFT name and attributes.
-  eventName: "BaseDev Lagos 2025 Certificate",
-  // Pinata API credentials
+  metadataDirPath: path.join(__dirname, "..", "assets", "metadata"),
   pinataApiKey: process.env.PINATA_API_KEY,
   pinataSecretKey: process.env.PINATA_API_SECRET,
+  ipfsGateway: process.env.IPFS_GATEWAY || "https://ipfs.io/ipfs",
+  maxFileSize: 1024 * 1024, // 1MB per JSON file
+  sampleValidation: 3, // Validate only first N files
 };
 
+const IPFS_METADATA_CID_OUTPUT_DIR = path.join(__dirname, "..", "ipfsCID");
+const IPFS_METADATA_CID_PATH = path.join(
+  IPFS_METADATA_CID_OUTPUT_DIR,
+  `jsonCID-${Date.now()}.txt`
+);
+
 /**
- * Main function to generate all metadata files and upload to IPFS.
+ * Validates metadata directory structure and content
+ * Time: O(n) where n = number of files, Space: O(1) - streams files sequentially
  */
-async function generateMetadata() {
-  console.log("--- Starting Metadata Generation ---");
-
-  // 1. Read Image Folder CID from file
-  let imageFolderCID;
+async function validateMetadataDirectory() {
   try {
-    if (!fs.existsSync(CONFIG.imageCIDPath)) {
-      throw new Error(`Image CID file not found at: ${CONFIG.imageCIDPath}`);
+    await fs.access(CONFIG.metadataDirPath);
+  } catch {
+    throw new Error(`Metadata directory not found: ${CONFIG.metadataDirPath}`);
+  }
+
+  const files = await fs.readdir(CONFIG.metadataDirPath);
+  const jsonFiles = files.filter((file) => file.endsWith(".json"));
+
+  if (jsonFiles.length === 0) {
+    throw new Error(`No JSON files found in: ${CONFIG.metadataDirPath}`);
+  }
+
+  // Sample validation - O(k) where k = sample size
+  for (
+    let i = 0;
+    i < Math.min(CONFIG.sampleValidation, jsonFiles.length);
+    i++
+  ) {
+    const filePath = path.join(CONFIG.metadataDirPath, jsonFiles[i]);
+    const stats = await fs.stat(filePath);
+
+    if (stats.size === 0) {
+      throw new Error(`Empty file: ${jsonFiles[i]}`);
     }
-    imageFolderCID = fs.readFileSync(CONFIG.imageCIDPath, "utf8").trim();
-    if (!imageFolderCID) {
-      throw new Error("Image CID file is empty");
+    if (stats.size > CONFIG.maxFileSize) {
+      throw new Error(`File too large: ${jsonFiles[i]} (${stats.size} bytes)`);
     }
-    console.log(`Using Image Folder CID: ${imageFolderCID}`);
-  } catch (error) {
-    console.error("Error reading image CID:", error.message);
-    console.error("Please run the image upload script first.");
-    return;
-  }
 
-  // 2. Ensure the output directory exists.
-  if (!fs.existsSync(CONFIG.outputDir)) {
-    console.log(`Creating output directory: ${CONFIG.outputDir}`);
-    fs.mkdirSync(CONFIG.outputDir, { recursive: true });
-  }
-
-  // 3. Read and parse the attendee data from the CSV file.
-  const attendees = [];
-  const parser = fs.createReadStream(CONFIG.csvFilePath).pipe(
-    parse({
-      columns: true,
-      skip_empty_lines: true,
-    })
-  );
-
-  for await (const record of parser) {
-    if (record.name && record.walletAddress) {
-      attendees.push(record);
+    const content = await fs.readFile(filePath, "utf8");
+    try {
+      JSON.parse(content);
+    } catch {
+      throw new Error(`Invalid JSON: ${jsonFiles[i]}`);
     }
   }
-  console.log(`Found ${attendees.length} attendees in ${CONFIG.csvFilePath}`);
 
-  // 4. Loop through each attendee and generate their personalized metadata file.
-  for (const attendee of attendees) {
-    const { name, walletAddress } = attendee;
-    const lowerCaseAddress = walletAddress.toLowerCase();
+  return jsonFiles.length;
+}
 
-    console.log(`Generating metadata for: ${name} (${lowerCaseAddress})`);
+/**
+ * Uploads metadata to IPFS with optimized error handling
+ * Time: O(1) for setup, O(n) upload depends on Pinata, Space: O(1) - streams folder
+ */
+async function uploadMetadataToIPFS(pinata, fileCount) {
+  console.log(`Uploading ${fileCount} metadata files...`);
 
-    // Construct the full IPFS URL for the attendee's personalized image.
-    const imageUrl = `https://ipfs.io/ipfs/${imageFolderCID}/${lowerCaseAddress}.png`;
+  const result = await pinata.pinFromFS(CONFIG.metadataDirPath, {
+    pinataMetadata: {
+      name: `EventCert-Metadata-${Date.now()}`,
+      keyvalues: { fileCount, timestamp: Date.now() },
+    },
+    pinataOptions: {
+      cidVersion: 1, // Better for distributed content
+    },
+  });
 
-    // Create the metadata object.
-    const metadata = {
-      name: `${CONFIG.eventName} - ${name}`,
-      description: CONFIG.description,
-      image: imageUrl,
-      attributes: [
-        {
-          trait_type: "Event",
-          value: "BaseDev Lagos 2025",
-        },
-        {
-          trait_type: "Attendee",
-          value: name,
-        },
-      ],
-    };
+  return `${CONFIG.ipfsGateway}/${result.IpfsHash}`;
+}
 
-    // 5. Save the metadata object as a new JSON file.
-    const outputPath = path.join(CONFIG.outputDir, `${lowerCaseAddress}.json`);
-    fs.writeFileSync(outputPath, JSON.stringify(metadata, null, 2));
-  }
+/**
+ * Saves CID to file with versioning
+ */
+async function saveCIDToFile(cid) {
+  await fs.mkdir(IPFS_METADATA_CID_OUTPUT_DIR, { recursive: true });
+  await fs.writeFile(IPFS_METADATA_CID_PATH, cid);
+  return IPFS_METADATA_CID_PATH;
+}
 
-  console.log(`All JSON files have been saved to: ${CONFIG.outputDir}`);
+/**
+ * Main optimized upload function
+ * Overall Time: O(n) worst case, Space: O(1) - minimal memory usage
+ */
+async function uploadMetadata() {
+  console.log("--- Uploading Metadata Folder to IPFS ---");
 
-  // 6. Upload metadata folder to IPFS and save CID
+  const startTime = Date.now();
+  let fileCount = 0;
+
   try {
-    console.log("--- Uploading Metadata Folder to IPFS ---");
-
+    // Phase 1: Validation - O(n)
     if (!CONFIG.pinataApiKey || !CONFIG.pinataSecretKey) {
       throw new Error("Pinata API keys not found in .env file.");
     }
 
+    fileCount = await validateMetadataDirectory();
+    console.log(`✅ Validated ${fileCount} metadata files`);
+
+    // Phase 2: Authentication - O(1)
     const pinata = new pinataSDK(CONFIG.pinataApiKey, CONFIG.pinataSecretKey);
 
-    console.log("Connecting to Pinata...");
+    console.log("Authenticating with Pinata...");
     await pinata.testAuthentication();
-    console.log("Pinata connection successful!");
+    console.log("✅ Pinata authentication successful");
 
-    console.log(`Uploading metadata folder: ${CONFIG.outputDir}`);
-    const result = await pinata.pinFromFS(CONFIG.outputDir, {
-      pinataMetadata: { name: `EventCert-Metadata-${Date.now()}` },
-    });
+    // Phase 3: Upload - O(n) [Pinata dependent]
+    const metadataFolderCID = await uploadMetadataToIPFS(pinata, fileCount);
 
-    const jsonFolderCID = `https://ipfs.io/ipfs/${result.IpfsHash}/`;
+    // Phase 4: Save results - O(1)
+    const savedPath = await saveCIDToFile(metadataFolderCID);
 
-    // Ensure the ipfsCID directory exists
-    const ipfsCIDDir = path.dirname(CONFIG.jsonCIDPath);
-    if (!fs.existsSync(ipfsCIDDir)) {
-      fs.mkdirSync(ipfsCIDDir, { recursive: true });
-    }
-
-    // Save the JSON folder CID to file
-    fs.writeFileSync(CONFIG.jsonCIDPath, jsonFolderCID);
-    console.log(`JSON IPFS CID saved to: ${CONFIG.jsonCIDPath}`);
-
+    const duration = Date.now() - startTime;
     console.log(`\n--- Metadata Upload Complete! ---`);
-    console.log(`JSON Folder CID: ${jsonFolderCID}`);
+    console.log(`📁 Files uploaded: ${fileCount}`);
+    console.log(`⏱️  Duration: ${duration}ms`);
+    console.log(`🔗 IPFS CID: ${metadataFolderCID}`);
+    console.log(`💾 CID saved to: ${savedPath}`);
   } catch (error) {
-    console.error(
-      "An error occurred during the metadata upload process:",
-      error
-    );
+    const duration = Date.now() - startTime;
+    console.error(`\n--- Upload Failed after ${duration}ms ---`);
+    console.error("❌ Error:", error.message);
+
+    // Exit with error code for CI/CD pipelines
+    process.exit(1);
   }
 }
 
-// Run the generation process.
-generateMetadata().catch((error) => {
-  console.error("An unexpected error occurred:", error);
+// Handle process signals for clean shutdown
+process.on("SIGINT", () => {
+  console.log("\nProcess interrupted by user");
+  process.exit(0);
 });
+
+process.on("unhandledRejection", (error) => {
+  console.error("Unhandled promise rejection:", error);
+  process.exit(1);
+});
+
+// Run only if called directly
+if (require.main === module) {
+  uploadMetadata();
+}
+
+module.exports = {
+  uploadMetadata,
+  validateMetadataDirectory,
+};

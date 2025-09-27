@@ -1,14 +1,13 @@
 const { createCanvas, loadImage, registerFont } = require("canvas");
-const fs = require("fs");
+const fs = require("fs").promises;
 const path = require("path");
 
-const inputImage = path.join(__dirname, "..", "assets", "certificate.png");
-const outputImage = path.join(
+// Default paths (but should be overridden by caller)
+const defaultInputImage = path.join(
   __dirname,
   "..",
   "assets",
-  "images",
-  "certificate_edited.png"
+  "certificate.png"
 );
 
 registerFont(
@@ -17,64 +16,102 @@ registerFont(
 );
 
 async function editCertificate({
-  inputPath = inputImage,
-  outputPath = outputImage,
+  inputPath = defaultInputImage,
+  outputPath = null,
   newName = "Ada Lovelace",
   textColor = "#7b3fe4",
 } = {}) {
+  // Validate required parameters
+  if (!outputPath) {
+    throw new Error("outputPath is required");
+  }
+
+  if (!newName || newName.trim().length === 0) {
+    throw new Error("newName cannot be empty");
+  }
+
   try {
+    // Check if input file exists
+    await fs.access(inputPath);
+
     const img = await loadImage(inputPath);
     const canvas = createCanvas(img.width, img.height);
     const ctx = canvas.getContext("2d");
 
     // ---- Auto compute rectangle based on image dimensions ----
     const rect = {
-      x: img.width * 0.25, // 25% from left
-      y: img.height * 0.42, // ~47% down from top
-      w: img.width * 0.6, // 60% of image width
-      h: img.height * 0.1, // 10% of image height
+      x: img.width * 0.25,
+      y: img.height * 0.42,
+      w: img.width * 0.6,
+      h: img.height * 0.1,
     };
 
     // Draw original certificate
     ctx.drawImage(img, 0, 0);
 
-    // Removed the background fill section - no more covering old name area
-
-    // ---- Auto font scaling ----
-    let currentSize = Math.floor(img.height * 0.07); // start ~7% of height
-    const minFontSize = Math.floor(img.height * 0.03); // don't shrink too small
+    // ---- Optimized font scaling ----
+    let currentSize = Math.floor(img.height * 0.07);
+    const minFontSize = Math.floor(img.height * 0.03);
 
     ctx.font = `${currentSize}px 'Great Vibes'`;
     let textWidth = ctx.measureText(newName).width;
+
+    const stepSize = Math.max(1, Math.floor(currentSize * 0.1));
 
     while (
       (textWidth > rect.w || currentSize > rect.h) &&
       currentSize > minFontSize
     ) {
-      currentSize -= 2;
-      ctx.font = `${currentSize}px 'Great Vibes'`;
+      currentSize -= stepSize;
+      ctx.font = `${currentSize}px ${fontFamily}`;
       textWidth = ctx.measureText(newName).width;
     }
 
     // ---- Center text in rectangle ----
     ctx.fillStyle = textColor;
     ctx.textBaseline = "middle";
+    ctx.textAlign = "center"; // Better centering
 
-    const textX = rect.x + (rect.w - textWidth) / 2;
+    const textX = rect.x + rect.w / 2; // Center alignment
     const textY = rect.y + rect.h / 2;
 
     ctx.fillText(newName, textX, textY);
 
+    // Verify font usage
+    const finalFont = ctx.font;
+    console.log(`Final font used: ${finalFont}`);
+
     // Save certificate
     const buffer = canvas.toBuffer("image/png");
-    fs.writeFileSync(outputPath, buffer);
+    await fs.writeFile(outputPath, buffer);
 
-    console.log(
-      `Certificate saved at ${outputPath} (font size: ${currentSize}px)`
-    );
+    console.log(`✅ Certificate saved at ${outputPath}`);
+
+    // Clean up
+    canvas.width = canvas.height = 0;
   } catch (err) {
-    console.error("Error editing certificate:", err);
+    console.error("❌ Error editing certificate:", err);
+    throw err;
   }
+}
+
+// Test function to verify font is working
+async function testFont() {
+  const testCanvas = createCanvas(100, 100);
+  const testCtx = testCanvas.getContext("2d");
+
+  testCtx.font = "20px 'Great Vibes'";
+  const availableFonts = testCtx.getContextAttributes().font;
+  console.log("Available fonts:", availableFonts);
+
+  // Test if font is loaded by measuring text
+  const measure = testCtx.measureText("Test");
+  console.log("Font measurement test:", measure);
+}
+
+// Run test if this file is executed directly
+if (require.main === module) {
+  testFont().catch(console.error);
 }
 
 module.exports = editCertificate;

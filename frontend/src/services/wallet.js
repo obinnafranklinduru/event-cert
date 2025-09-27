@@ -47,7 +47,11 @@ class WalletService {
             rpcUrl: NETWORKS.BASE_SEPOLIA.rpcUrl,
           },
         ],
-        appMetadata: APP_METADATA,
+        appMetadata: {
+          name: APP_METADATA.name,
+          description: APP_METADATA.description,
+          logo: APP_METADATA.logo,
+        },
         connect: {
           autoConnectLastWallet: true,
           autoConnectAllPreviousWallet: false,

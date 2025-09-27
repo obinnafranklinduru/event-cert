@@ -11,14 +11,18 @@ const PORT = process.env.PORT || 8000;
 app.use(cors());
 app.use(express.json());
 
-const reactBuildPath = path.join(__dirname, "..", "..", "frontend", "dist");
-app.use(express.static(reactBuildPath));
+// const reactBuildPath = path.join(__dirname, "..", "..", "frontend", "dist");
+// app.use(express.static(reactBuildPath));
 
 app.use("/api", apiRoutes);
-app.use((req, res, next) => {
-  if (req.path.startsWith("/api")) return next();
-  res.sendFile(path.join(reactBuildPath, "index.html"));
+app.get("/", (req, res) => {
+  res.send("API is running...");
 });
+
+// app.use((req, res, next) => {
+//   if (req.path.startsWith("/api")) return next();
+//   res.sendFile(path.join(reactBuildPath, "index.html"));
+// });
 
 app.use(errorHandler);
 

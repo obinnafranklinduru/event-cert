@@ -7,7 +7,15 @@ import ClaimStatus from "./components/ClaimStatus.jsx";
 import { getExplorerUrl } from "./utils/formatters.js";
 import "./App.css";
 
+import { APP_METADATA } from "./utils/constants.js";
+
+// For SEO (page metadata)
+import { SEO_METADATA } from "./utils/constants";
+import { useSEO } from "./hooks/useSEO";
+
 function App() {
+  useSEO(SEO_METADATA.name, SEO_METADATA.description);
+
   const {
     wallet,
     isConnecting,

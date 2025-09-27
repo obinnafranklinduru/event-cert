@@ -29,11 +29,63 @@ export const WALLETCONNECT_PROJECT_ID =
   import.meta.env.VITE_WALLETCONNECT_PROJECT_ID ||
   "a2432e1bcd8843a074001ad8dbc51b5f";
 
-// App metadata
+// Web3-Onboard specific metadata (limited to supported fields)
 export const APP_METADATA = {
-  name: "Cosmic Claim DApp",
-  icon: '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><circle cx="16" cy="16" r="8" fill="url(#gradient)"/><defs><linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#64ffda"/><stop offset="100%" style="stop-color:#7c4dff"/></linearGradient></defs></svg>',
-  description: "A dApp for claiming your cosmic tokens.",
+  name: "Libertas Alpha - Blockchain Solutions",
+  description:
+    "We provide cutting-edge solutions in blockchain development, personnel training, and financial analytics to help businesses thrive in the digital age.",
+  logo: "/logo.png",
+};
+
+// SEO metadata (for React app - separate from Web3-Onboard)
+export const SEO_METADATA = {
+  name: "Libertas Alpha - Blockchain Solutions",
+  description:
+    "We provide cutting-edge solutions in blockchain development, personnel training, and financial analytics to help businesses thrive in the digital age.",
+  keywords: [
+    "blockchain development",
+    "personnel training",
+    "financial analytics",
+    "business solutions",
+    "digital transformation",
+    "web3 consulting",
+    "blockchain education",
+    "Libertas Alpha",
+  ],
+  social: {
+    twitter: "@LibertasAlpha",
+    facebook: "libertas.alpha",
+    linkedin: "company/libertas-alpha",
+    instagram: "libertasalpha",
+    github: "LibertasAlpha",
+    telegram: "libertasalpha",
+    discord: "invite/libertasalpha",
+    youtube: "@LibertasAlpha",
+  },
+  socialUrls: {
+    twitter: "https://x.com/LibertasAlpha",
+    facebook: "https://web.facebook.com/libertas.alpha",
+    linkedin: "https://www.linkedin.com/company/libertas-alpha",
+    instagram: "https://www.instagram.com/libertasalpha",
+    github: "https://github.com/LibertasAlpha",
+    telegram: "https://t.me/libertasalpha",
+    discord: "https://discord.gg/libertasalpha",
+    youtube: "https://youtube.com/@libertasalpha",
+  },
+  ogImage: `${
+    import.meta.env.VITE_DAPP_URL || "http://localhost:5173"
+  }/og-image.png`,
+  ogImageAlt: "Libertas Alpha - Blockchain Development, Training & Analytics",
+  company: {
+    name: "Libertas Alpha",
+    website: "https://www.libertasalpha.com/",
+    email: "libertasalpha@gmail.com",
+    phone: "+2347065779669",
+    address: {
+      city: "Owerri",
+      country: "Nigeria",
+    },
+  },
   explore: import.meta.env.VITE_DAPP_URL || "http://localhost:5173",
 };
 
