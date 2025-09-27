@@ -24,7 +24,7 @@ export const CONTRACT_ADDRESS =
 // API configuration
 export const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL ||
-  "https://libertasalpha-event-cert-api.onrender.com";
+  "https://libertasalpha-event-cert-api.onrender.com/api";
 
 // WalletConnect configuration
 export const WALLETCONNECT_PROJECT_ID =
