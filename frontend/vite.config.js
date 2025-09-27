@@ -8,7 +8,7 @@ export default defineConfig({
     port: 5173,
     host: true,
     allowedHosts: [
-      "libertasalpha-event-cert-website.onrender.com",
+      "event-cert-641vxlrxt-duruobinnafranklingmailcoms-projects.vercel.app",
       "localhost",
       "127.0.0.1",
     ],

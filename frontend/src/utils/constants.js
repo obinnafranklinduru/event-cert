@@ -88,7 +88,7 @@ export const SEO_METADATA = {
   },
   explore:
     import.meta.env.VITE_DAPP_URL ||
-    "https://libertasalpha-event-cert-website.onrender.com",
+    "https://event-cert-641vxlrxt-duruobinnafranklingmailcoms-projects.vercel.app",
 };
 
 // Status polling intervals
