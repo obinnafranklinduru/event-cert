@@ -2,124 +2,282 @@
 pragma solidity ^0.8.30;
 
 import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {Ownable, Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
+import {Pausable} from "@openzeppelin/contracts/utils/Pausable.sol";
 import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 
 /// @title EventCertificate
 /// @author Obinna Franklin Duru
-/// @notice A soulbound (non-transferable) ERC721 certificate contract.
-/// It uses a Merkle Tree for whitelisting and a trusted relayer for gasless minting.
-/// The tokenURI is deterministically generated from the owner's address.
-contract EventCertificate is ERC721, Ownable {
+/// @notice A reusable, pausable, and soulbound ERC721 certificate contract for multiple events.
+/// @dev Manages minting "campaigns" with unique whitelists, timelines, and mint limits.
+/// A trusted relayer facilitates gasless minting for whitelisted participants.
+contract EventCertificate is ERC721, Ownable2Step, Pausable {
     // --- Custom Errors ---
     error NotAuthorizedRelayer();
-    error MintingNotActive();
     error AlreadyMinted();
     error InvalidProof();
     error NonTransferable();
     error NonExistentToken();
     error ZeroAddress();
+    error CampaignNotActive();
+    error CampaignDoesNotExist();
+    error InvalidCampaignTimes();
+    error CampaignMustStartInFuture();
+    error EmptyMerkleRoot();
+    error MintingWindowNotOpen();
+    error CampaignAlreadyExists();
+    error ProofTooLong();
+    error InvalidInput();
+    error CannotModifyStartedCampaign();
+    error MintLimitReached();
+    error CampaignDurationTooLong();
+    error CampaignExpired();
+    error CampaignHasMints();
+
+    // --- Constants ---
+    uint256 private constant MAX_PROOF_DEPTH = 500;
+    uint256 private constant MAX_CAMPAIGN_DURATION = 365 days;
+
+    // --- Structs ---
+    /// @notice Holds all parameters for a single minting event.
+    struct MintingCampaign {
+        bytes32 merkleRoot;
+        uint256 startTime;
+        uint256 endTime;
+        uint256 maxMints;
+        bool isActive;
+    }
 
     // --- State Variables ---
     string private _baseTokenURI;
     address public relayer;
-    uint256 public immutable mintStartTime;
-    uint256 public constant MINT_WINDOW = 24 hours; // Minting is only active for 24 hours
-    bytes32 public merkleRoot;
-
-    // Mapping to prevent a user from minting more than once.
-    mapping(address => bool) public hasMinted;
-
-    // A simple, incrementing counter for token IDs. Starts at 1.
+    mapping(uint256 => MintingCampaign) public campaigns;
+    mapping(uint256 => mapping(address => bool)) public hasMintedInCampaign;
+    mapping(uint256 => uint256) public campaignMintCount;
     uint256 private _nextTokenId = 1;
 
     // --- Events ---
-    event CertificateMinted(address indexed attendee, uint256 indexed tokenId);
-    event MerkleRootUpdated(bytes32 newRoot);
+    event CertificateMinted(address indexed attendee, uint256 indexed tokenId, uint256 indexed campaignId);
+    event CampaignCreated(
+        uint256 indexed campaignId, bytes32 merkleRoot, uint256 startTime, uint256 endTime, uint256 maxMints
+    );
+    event CampaignUpdated(uint256 indexed campaignId, bytes32 newMerkleRoot, uint256 newStartTime, uint256 newEndTime);
+    event CampaignActiveStatusChanged(uint256 indexed campaignId, bool isActive);
+    event CampaignDeleted(uint256 indexed campaignId);
     event RelayerUpdated(address newRelayer);
     event BaseURIUpdated(string newBaseURI);
 
     // --- Constructor ---
-    /// @notice Initializes the contract with necessary parameters.
-    /// @param name_ The name of the ERC721 token.
-    /// @param symbol_ The symbol of the ERC721 token.
-    /// @param baseURI_ The base URI for the metadata, pointing to an IPFS folder.
+    /// @notice Initializes the contract with core, immutable parameters.
+    /// @param name_ The name of the ERC721 token collection.
+    /// @param symbol_ The symbol of the ERC721 token collection.
+    /// @param baseURI_ The base URI for the token metadata.
     /// @param relayer_ The trusted address that will pay gas fees for minting.
-    /// @param mintStartTime_ The Unix timestamp when the minting window opens.
-    /// @param merkleRoot_ The Merkle Root of the whitelist of eligible attendees.
-    constructor(
-        string memory name_,
-        string memory symbol_,
-        string memory baseURI_,
-        address relayer_,
-        uint256 mintStartTime_,
-        bytes32 merkleRoot_
-    ) ERC721(name_, symbol_) Ownable(msg.sender) {
+    constructor(string memory name_, string memory symbol_, string memory baseURI_, address relayer_)
+        ERC721(name_, symbol_)
+        Ownable(msg.sender)
+    {
+        if (bytes(name_).length == 0 || bytes(symbol_).length == 0 || bytes(baseURI_).length == 0) {
+            revert InvalidInput();
+        }
         if (relayer_ == address(0)) revert ZeroAddress();
 
         _baseTokenURI = baseURI_;
         relayer = relayer_;
-        mintStartTime = mintStartTime_;
-        merkleRoot = merkleRoot_;
     }
 
     // --- Minting Function (Relayer Only) ---
-    /// @notice Mints a soulbound certificate to an attendee if their Merkle proof is valid.
-    /// @dev Can only be called by the trusted relayer address.
+    /// @notice Mints a soulbound certificate to an attendee for a specific campaign.
+    /// @dev Checks campaign status, time windows, mint limits, and Merkle proof validity.
     /// @param attendee The address that will receive the certificate NFT.
-    /// @param merkleProof The Merkle proof that proves the attendee is on the whitelist.
-    function mint(address attendee, bytes32[] calldata merkleProof) external {
-        // --- Checks ---
+    /// @param campaignId The ID of the campaign the user is minting for.
+    /// @param merkleProof An array of bytes32 hashes forming the Merkle proof.
+    function mint(address attendee, uint256 campaignId, bytes32[] calldata merkleProof) external whenNotPaused {
+        if (attendee == address(0)) revert ZeroAddress();
         if (msg.sender != relayer) revert NotAuthorizedRelayer();
-        if (block.timestamp < mintStartTime || block.timestamp > mintStartTime + MINT_WINDOW) {
-            revert MintingNotActive();
-        }
-        if (hasMinted[attendee]) revert AlreadyMinted();
+        if (merkleProof.length > MAX_PROOF_DEPTH) revert ProofTooLong();
 
-        // Verify that the attendee is on the whitelist using their Merkle proof.
-        bytes32 leaf = keccak256(abi.encode(attendee));
-        if (!MerkleProof.verify(merkleProof, merkleRoot, leaf)) {
+        MintingCampaign storage campaign = campaigns[campaignId];
+
+        if (campaign.merkleRoot == bytes32(0)) revert CampaignDoesNotExist();
+        if (!campaign.isActive) revert CampaignNotActive();
+        if (block.timestamp < campaign.startTime || block.timestamp > campaign.endTime) {
+            revert MintingWindowNotOpen();
+        }
+        if (hasMintedInCampaign[campaignId][attendee]) revert AlreadyMinted();
+        if (campaignMintCount[campaignId] >= campaign.maxMints) revert MintLimitReached();
+
+        bytes32 leaf = keccak256(abi.encodePacked(attendee));
+        if (!MerkleProof.verify(merkleProof, campaign.merkleRoot, leaf)) {
             revert InvalidProof();
         }
 
-        // --- Effects ---
         uint256 tokenId = _nextTokenId;
-        hasMinted[attendee] = true;
-        _nextTokenId++;
+        hasMintedInCampaign[campaignId][attendee] = true;
+        campaignMintCount[campaignId]++;
+        unchecked {
+            _nextTokenId++;
+        }
 
-        // --- Interaction ---
+        emit CertificateMinted(attendee, tokenId, campaignId);
         _safeMint(attendee, tokenId);
-
-        emit CertificateMinted(attendee, tokenId);
     }
 
-    // --- Soulbound (Non-transferable) Logic ---
-    /// @dev Overrides the internal _update function (from OpenZeppelin v5) to block all transfers
-    /// except for minting (from address(0)) and burning (to address(0)).
+    // --- Admin Functions ---
+
+    /// @notice Creates a new minting campaign. Campaigns are inactive by default.
+    /// @param campaignId The ID for the new campaign.
+    /// @param merkleRoot The whitelist Merkle root.
+    /// @param startTime The Unix timestamp for when minting begins.
+    /// @param endTime The Unix timestamp for when minting ends.
+    /// @param maxMints The maximum number of NFTs that can be minted for this campaign.
+    function createCampaign(
+        uint256 campaignId,
+        bytes32 merkleRoot,
+        uint256 startTime,
+        uint256 endTime,
+        uint256 maxMints
+    ) external onlyOwner {
+        if (campaigns[campaignId].merkleRoot != bytes32(0)) revert CampaignAlreadyExists();
+        if (startTime < block.timestamp) revert CampaignMustStartInFuture();
+        if (startTime >= endTime) revert InvalidCampaignTimes();
+        if (endTime - startTime > MAX_CAMPAIGN_DURATION) revert CampaignDurationTooLong();
+        if (merkleRoot == bytes32(0)) revert EmptyMerkleRoot();
+
+        campaigns[campaignId] = MintingCampaign({
+            merkleRoot: merkleRoot,
+            startTime: startTime,
+            endTime: endTime,
+            maxMints: maxMints,
+            isActive: false
+        });
+
+        emit CampaignCreated(campaignId, merkleRoot, startTime, endTime, maxMints);
+    }
+
+    /// @notice Updates the parameters of a campaign BEFORE it has started.
+    /// @param campaignId The ID of the campaign to update.
+    /// @param newMerkleRoot The new whitelist Merkle root.
+    /// @param newStartTime The new start time.
+    /// @param newEndTime The new end time.
+    function updateCampaignBeforeStart(
+        uint256 campaignId,
+        bytes32 newMerkleRoot,
+        uint256 newStartTime,
+        uint256 newEndTime
+    ) external onlyOwner {
+        MintingCampaign storage campaign = campaigns[campaignId];
+        if (campaign.merkleRoot == bytes32(0)) revert CampaignDoesNotExist();
+        if (block.timestamp >= campaign.startTime) revert CannotModifyStartedCampaign();
+
+        if (newStartTime < block.timestamp) revert CampaignMustStartInFuture();
+        if (newStartTime >= newEndTime) revert InvalidCampaignTimes();
+        if (newEndTime - newStartTime > MAX_CAMPAIGN_DURATION) revert CampaignDurationTooLong();
+        if (newMerkleRoot == bytes32(0)) revert EmptyMerkleRoot();
+
+        campaign.merkleRoot = newMerkleRoot;
+        campaign.startTime = newStartTime;
+        campaign.endTime = newEndTime;
+
+        emit CampaignUpdated(campaignId, newMerkleRoot, newStartTime, newEndTime);
+    }
+
+    /// @notice Deletes a campaign that was created by mistake.
+    /// @dev Can only be called before the campaign starts, if it's inactive, and if no mints have occurred.
+    /// @param campaignId The ID of the campaign to delete.
+    function deleteCampaign(uint256 campaignId) external onlyOwner {
+        MintingCampaign storage campaign = campaigns[campaignId];
+        if (campaign.merkleRoot == bytes32(0)) revert CampaignDoesNotExist();
+        if (campaign.isActive) revert CampaignNotActive(); // Must be inactive
+        if (block.timestamp >= campaign.startTime) revert CannotModifyStartedCampaign();
+        if (campaignMintCount[campaignId] > 0) revert CampaignHasMints(); // Cannot delete if mints exist
+
+        delete campaigns[campaignId];
+        emit CampaignDeleted(campaignId);
+    }
+
+    /// @notice Activates or deactivates a campaign.
+    /// @param campaignId The ID of the campaign to modify.
+    /// @param isActive The new active status.
+    function setCampaignActiveStatus(uint256 campaignId, bool isActive) external onlyOwner {
+        MintingCampaign storage campaign = campaigns[campaignId];
+        if (campaign.merkleRoot == bytes32(0)) revert CampaignDoesNotExist();
+
+        if (isActive) {
+            if (block.timestamp < campaign.startTime) revert MintingWindowNotOpen();
+            if (block.timestamp > campaign.endTime) revert CampaignExpired();
+        }
+
+        campaign.isActive = isActive;
+        emit CampaignActiveStatusChanged(campaignId, isActive);
+    }
+
+    /// @notice Pauses all minting in an emergency.
+    function pause() external onlyOwner {
+        _pause();
+    }
+
+    /// @notice Resumes minting after a pause.
+    function unpause() external onlyOwner {
+        _unpause();
+    }
+
+    /// @notice Updates the trusted relayer address.
+    /// @param newRelayer The address of the new relayer.
+    function updateRelayer(address newRelayer) external onlyOwner {
+        if (newRelayer == address(0)) revert ZeroAddress();
+        relayer = newRelayer;
+        emit RelayerUpdated(newRelayer);
+    }
+
+    /// @notice Updates the base URI for metadata.
+    /// @param newBaseURI The new base URI string.
+    function setBaseURI(string calldata newBaseURI) external onlyOwner {
+        if (bytes(newBaseURI).length == 0) revert InvalidInput();
+        _baseTokenURI = newBaseURI;
+        emit BaseURIUpdated(newBaseURI);
+    }
+
+    // --- View Functions ---
+
+    /// @notice Gets all data for a specific campaign.
+    /// @param campaignId The ID of the campaign.
+    /// @return A MintingCampaign struct in memory.
+    function getCampaign(uint256 campaignId) external view returns (MintingCampaign memory) {
+        return campaigns[campaignId];
+    }
+
+    /// @notice Checks if a user meets the basic requirements to mint (does not check Merkle proof).
+    /// @param attendee The address to check.
+    /// @param campaignId The campaign to check against.
+    /// @return A boolean indicating if the user meets the current criteria to mint.
+    function canMint(address attendee, uint256 campaignId) external view returns (bool) {
+        MintingCampaign storage campaign = campaigns[campaignId];
+        if (!campaign.isActive || campaign.merkleRoot == bytes32(0)) return false;
+        if (block.timestamp < campaign.startTime || block.timestamp > campaign.endTime) return false;
+        if (hasMintedInCampaign[campaignId][attendee]) return false;
+        if (campaignMintCount[campaignId] >= campaign.maxMints) return false;
+        return true;
+    }
+
+    // --- Soulbound and Metadata Logic ---
+
     function _update(address to, uint256 tokenId, address auth) internal override returns (address) {
         address from = _ownerOf(tokenId);
-        // Allow minting and burning, but disallow all other transfers.
         if (from != address(0) && to != address(0)) {
             revert NonTransferable();
         }
         return super._update(to, tokenId, auth);
     }
 
-    // --- Metadata Logic ---
     /// @notice Returns the metadata URI for a given token.
-    /// @dev The URI is deterministically generated based on the token owner's address.
-    /// This ensures the link is permanent and independent of minting order.
+    /// @param tokenId The ID of the token.
+    /// @return The metadata URI string.
     function tokenURI(uint256 tokenId) public view override returns (string memory) {
-        // Check if the token exists before proceeding.
-        if (ownerOf(tokenId) == address(0)) {
-            revert NonExistentToken();
-        }
-
-        address ownerAddr = ownerOf(tokenId);
+        address ownerAddr = _ownerOf(tokenId);
+        if (ownerAddr == address(0)) revert NonExistentToken();
         string memory addrStr = _toAsciiString(ownerAddr);
-
-        // The final URL will be, e.g., "ipfs://CID/0x123abc...def.json"
-        return string.concat(_baseTokenURI, addrStr, ".json");
+        return string.concat(_baseURI(), addrStr, ".json");
     }
 
     /// @dev Helper function to convert an address to its lowercase hex string representation.
@@ -152,32 +310,12 @@ contract EventCertificate is ERC721, Ownable {
         return string(str);
     }
 
-    // --- Admin Functions ---
-    /// @notice Allows the contract owner to update the Merkle Root.
-    function updateMerkleRoot(bytes32 newRoot) external onlyOwner {
-        merkleRoot = newRoot;
-        emit MerkleRootUpdated(newRoot);
-    }
-
-    /// @notice Allows the contract owner to update the trusted relayer address.
-    function updateRelayer(address newRelayer) external onlyOwner {
-        if (newRelayer == address(0)) revert ZeroAddress();
-        relayer = newRelayer;
-        emit RelayerUpdated(newRelayer);
-    }
-
-    /// @notice Allows the contract owner to update the base URI for metadata.
-    function setBaseURI(string calldata newBaseURI) external onlyOwner {
-        _baseTokenURI = newBaseURI;
-        emit BaseURIUpdated(newBaseURI);
-    }
-
-    /// @notice A public view function for the base URI.
     function _baseURI() internal view override returns (string memory) {
         return _baseTokenURI;
     }
 
-    /// @notice A view function to see the next token ID that will be minted.
+    /// @notice Returns the next token ID that will be minted.
+    /// @return The next token ID.
     function nextTokenId() external view returns (uint256) {
         return _nextTokenId;
     }
