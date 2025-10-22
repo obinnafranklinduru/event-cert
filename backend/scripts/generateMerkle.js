@@ -3,7 +3,7 @@ const path = require("path");
 const { parse } = require("csv-parse/sync");
 const { MerkleTree } = require("merkletreejs");
 const keccak256 = require("keccak256");
-const ethers = require("ethers");
+const { ethers } = require("ethers");
 
 // --- CONFIGURATION ---
 const CONFIG = {
@@ -11,9 +11,6 @@ const CONFIG = {
   merkleOutputDir: path.join(__dirname, "..", "merkleData"),
   walletAddressLength: 42,
 };
-
-const MERKLE_ROOT_PATH = path.join(CONFIG.merkleOutputDir, "merkleRoot.txt");
-const MERKLE_TREE_PATH = path.join(CONFIG.merkleOutputDir, "merkleTree.json");
 
 /**
  * Validates and normalizes wallet addresses
@@ -80,12 +77,9 @@ function processCSVData(csvContent) {
  * Generates Merkle leaves from addresses
  */
 function generateMerkleLeaves(addresses) {
+  console.log("Encoding leaves using abi.encodePacked standard...");
   return addresses.map((addr) => {
-    const encoded = ethers.AbiCoder.defaultAbiCoder().encode(
-      ["address"],
-      [addr]
-    );
-    return ethers.keccak256(encoded);
+    return ethers.solidityPackedKeccak256(["address"], [addr]);
   });
 }
 
@@ -96,7 +90,6 @@ function buildMerkleTree(addresses, leaves) {
   const merkleTree = new MerkleTree(leaves, keccak256, { sortPairs: true });
   const merkleRoot = merkleTree.getHexRoot();
 
-  // Generate proofs
   const merkleProofs = {};
   addresses.forEach((addr, index) => {
     const leaf = leaves[index];
@@ -114,13 +107,26 @@ async function generateMerkle() {
   const startTime = Date.now();
 
   try {
-    // Phase 1: Input validation - O(1)
+    // UPDATED: Read campaign ID from command-line arguments
+    const campaignId = process.argv[2];
+    if (!campaignId || !/^\d+$/.test(campaignId) || Number(campaignId) < 1) {
+      throw new Error(
+        "Invalid or missing Campaign ID. Please provide a valid number as a command-line argument.\nUsage: node scripts/generate-merkle.js <campaignId>"
+      );
+    }
+    console.log(`Generating Merkle data for Campaign ID: ${campaignId}`);
+
+    // UPDATED: Dynamically create paths based on the campaign ID
+    const merkleOutputDir = path.join(CONFIG.merkleOutputDir, campaignId);
+    const merkleRootPath = path.join(merkleOutputDir, "merkleRoot.txt");
+    const merkleTreePath = path.join(merkleOutputDir, "merkleTree.json");
+
+    // Phase 1: Input validation
     if (!fs.existsSync(CONFIG.csvInputPath)) {
       throw new Error(`Input file not found at ${CONFIG.csvInputPath}`);
     }
 
-    // Phase 2: Read and process CSV - O(n)
-    console.log(`Reading CSV from: ${CONFIG.csvInputPath}`);
+    // Phase 2: Read and process CSV
     const csvContent = fs.readFileSync(CONFIG.csvInputPath);
     const { validAddresses, errors } = processCSVData(csvContent);
 
@@ -129,66 +135,43 @@ async function generateMerkle() {
     }
 
     console.log(`✅ Processed ${validAddresses.length} unique addresses`);
-
     if (errors.length > 0) {
       console.warn(`⚠️  ${errors.length} rows had issues:`);
-      errors.slice(0, 5).forEach((error) => console.warn(`  ${error}`)); // Show first 5 errors
+      errors.slice(0, 5).forEach((error) => console.warn(`  ${error}`));
     }
 
-    // Phase 3: Generate Merkle leaves - O(n)
-    console.log("Generating Merkle leaves...");
+    // Phase 3: Generate Merkle leaves
     const leaves = generateMerkleLeaves(validAddresses);
 
-    // Phase 4: Build Merkle tree - O(n log n)
-    console.log("Building Merkle tree...");
+    // Phase 4: Build Merkle tree
     const { merkleRoot, merkleProofs } = buildMerkleTree(
       validAddresses,
       leaves
     );
     console.log(`✅ Merkle Root: ${merkleRoot}`);
 
-    // Phase 5: Save outputs - O(n) for file writing
-    console.log("Saving output files...");
-    if (!fs.existsSync(CONFIG.merkleOutputDir)) {
-      fs.mkdirSync(CONFIG.merkleOutputDir, { recursive: true });
+    // Phase 5: Save outputs
+    if (!fs.existsSync(merkleOutputDir)) {
+      fs.mkdirSync(merkleOutputDir, { recursive: true });
     }
 
-    fs.writeFileSync(MERKLE_ROOT_PATH, merkleRoot);
-    fs.writeFileSync(MERKLE_TREE_PATH, JSON.stringify(merkleProofs, null, 2));
+    fs.writeFileSync(merkleRootPath, merkleRoot);
+    fs.writeFileSync(merkleTreePath, JSON.stringify(merkleProofs, null, 2));
 
-    // Phase 6: Report results - O(1)
+    // Phase 6: Report results
     const duration = Date.now() - startTime;
-
     console.log("\n--- Merkle Tree Generation Complete! ---");
-    console.log(`📊 Total addresses: ${validAddresses.length}`);
     console.log(`⏱️  Duration: ${duration}ms`);
-    console.log(`📁 Merkle root saved to: ${MERKLE_ROOT_PATH}`);
-    console.log(`📁 Merkle proofs saved to: ${MERKLE_TREE_PATH}`);
-
-    if (errors.length > 0) {
-      console.log(`⚠️  ${errors.length} rows were skipped due to errors`);
-    }
+    console.log(`📁 Merkle root saved to: ${merkleRootPath}`);
+    console.log(`📁 Merkle proofs saved to: ${merkleTreePath}`);
   } catch (error) {
-    const duration = Date.now() - startTime;
-    console.error(`\n--- Generation Failed after ${duration}ms ---`);
+    console.error("\n--- Generation Failed ---");
     console.error("❌ Error:", error.message);
     process.exit(1);
   }
 }
 
-// Handle process signals
-process.on("SIGINT", () => {
-  console.log("\nProcess interrupted by user");
-  process.exit(0);
-});
-
-// Run only if called directly
-if (require.main === module) {
-  generateMerkle().catch((error) => {
-    console.error("Critical error:", error);
-    process.exit(1);
-  });
-}
+generateMerkle();
 
 module.exports = {
   generateMerkle,

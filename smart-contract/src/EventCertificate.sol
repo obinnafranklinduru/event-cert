@@ -204,7 +204,7 @@ contract EventCertificate is ERC721, Ownable2Step, Pausable {
         if (campaign.merkleRoot == bytes32(0)) revert CampaignDoesNotExist();
 
         if (isActive) {
-            if (block.timestamp < campaign.startTime) revert MintingWindowNotOpen();
+            // if (block.timestamp < campaign.startTime) revert MintingWindowNotOpen();
             if (block.timestamp > campaign.endTime) revert CampaignExpired();
         }
 

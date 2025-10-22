@@ -10,7 +10,7 @@ import "./App.css";
 import { APP_METADATA } from "./utils/constants.js";
 
 // For SEO (page metadata)
-import { SEO_METADATA } from "./utils/constants";
+import { CAMPAIGN_ID, SEO_METADATA } from "./utils/constants";
 import { useSEO } from "./hooks/useSEO";
 
 function App() {
@@ -36,7 +36,7 @@ function App() {
     checkEligibility,
     reset: resetEligibility,
     retry: retryEligibility,
-  } = useEligibility();
+  } = useEligibility(CAMPAIGN_ID);
 
   const {
     isClaiming,
@@ -47,7 +47,7 @@ function App() {
     claimCertificate,
     reset: resetClaim,
     retry: retryClaim,
-  } = useClaim();
+  } = useClaim(CAMPAIGN_ID);
 
   // Check eligibility when wallet connects
   useEffect(() => {

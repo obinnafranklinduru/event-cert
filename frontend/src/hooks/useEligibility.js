@@ -5,7 +5,7 @@ import { COSMIC_MESSAGES } from "../utils/messages.js";
 /**
  * Custom hook for eligibility checking
  */
-export const useEligibility = () => {
+export const useEligibility = (campaignId) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isEligible, setIsEligible] = useState(false);
   const [proof, setProof] = useState(null);
@@ -57,7 +57,7 @@ export const useEligibility = () => {
         const stopRotation = startMessageRotation();
 
         try {
-          const proofData = await apiService.getProof(address);
+          const proofData = await apiService.getProof(address, campaignId);
 
           setProof(proofData);
           setIsEligible(true);

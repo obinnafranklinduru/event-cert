@@ -5,7 +5,7 @@ import { COSMIC_MESSAGES } from "../utils/messages.js";
 /**
  * Custom hook for certificate claiming
  */
-export const useClaim = () => {
+export const useClaim = (campaignId) => {
   const [isClaiming, setIsClaiming] = useState(false);
   const [txHash, setTxHash] = useState(null);
   const [hasClaimed, setHasClaimed] = useState(false);
@@ -58,6 +58,7 @@ export const useClaim = () => {
         try {
           const transactionHash = await apiService.mintCertificate(
             address,
+            campaignId,
             merkleProof
           );
 

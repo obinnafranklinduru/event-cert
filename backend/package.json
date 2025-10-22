@@ -12,8 +12,8 @@
     "upload:metadata": "node ./scripts/uploadMetadata.js",
     "generate:merkle": "node ./scripts/generateMerkle.js",
     "generate:all": "npm run generate:assets && npm run upload:images && npm run generate:metadata",
-    "upload:all": "npm run upload:metadata && npm run generate:merkle",
-    "full:pipeline": "npm run generate:assets && npm run upload:images && npm run generate:metadata && npm run upload:metadata && npm run generate:merkle"
+    "upload:all": "npm run upload:metadata && npm run generate:merkle -- 1",
+    "full:pipeline": "npm run generate:assets && npm run upload:images && npm run generate:metadata && npm run upload:metadata && npm run generate:merkle -- 1"
   },
   "keywords": [],
   "author": "",

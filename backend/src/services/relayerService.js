@@ -1,124 +1,101 @@
-const { deployedContract, relayerWallet } = require("../config/web");
+const { deployedContract, relayerWallet } = require("../config/web3");
 const { AppError } = require("../middleware/errorHandler");
 
+// A map of known custom error selectors from the smart contract.
+// This allows us to provide user-friendly error messages.
+const CUSTOM_ERRORS = {
+  "0x51722353": "NotAuthorizedRelayer",
+  "0x15328223": "AlreadyMinted",
+  "0x4879222c": "InvalidProof",
+  "0x40b3c3c1": "CampaignNotActive",
+  "0x887c3017": "CampaignDoesNotExist",
+  "0x09bde339": "CampaignMustStartInFuture",
+  "0x1f4b3133": "MintingWindowNotOpen",
+  "0xf2732d3b": "MintLimitReached",
+  "0xcf3ee79a": "CampaignExpired",
+};
+
 /**
- * Submits the mint transaction to the blockchain.
+ * Submits the mint transaction to the blockchain for a specific campaign.
+ * The smart contract is treated as the single source of truth for all validation.
+ *
  * @param {string} attendee The address of the user who will receive the NFT.
+ * @param {string | number} campaignId The ID of the campaign to mint from.
  * @param {string[]} merkleProof The Merkle proof for the attendee.
  * @returns {Promise<string>} The transaction hash.
- * @throws {Error} If the transaction fails.
+ * @throws {AppError} If the transaction fails for any reason.
  */
-// async function mintNFT(attendee, merkleProof) {
-//   try {
-//     const alreadyMinted = await deployedContract.hasMinted(attendee);
-//     console.log("inside");
-//     console.log(alreadyMinted);
-//     if (alreadyMinted)
-//       throw new AppError("Address has already minted a certificate", 400);
+async function mintNFT(attendee, campaignId, merkleProof) {
+  console.log(`Attempting to mint for campaign #${campaignId}...`);
+  console.log(`  - Attendee: ${attendee}`);
 
-//     const tx = await deployedContract.mint(attendee, merkleProof, {
-//       from: relayerWallet.address,
-//     });
-
-//     console.log("tx", tx);
-
-//     await tx.wait();
-
-//     return tx.hash;
-//   } catch (error) {
-//     throw new AppError(error.message, 500);
-//   }
-// }
-async function mintNFT(attendee, merkleProof) {
   try {
-    console.log("=== Debugging Mint Process ===");
-    console.log("Attendee:", attendee);
-    console.log("Merkle Proof:", merkleProof);
-
-    // Check if minting has started - Convert BigInt to Number for comparison
-    const mintStartTime = await deployedContract.mintStartTime();
-    const currentTime = Math.floor(Date.now() / 1000);
-
-    console.log("Mint start time (BigInt):", mintStartTime.toString());
-    console.log(
-      "Mint start time (Date):",
-      new Date(Number(mintStartTime) * 1000)
-    );
-    console.log("Current time:", new Date(currentTime * 1000));
-    console.log("Can mint now:", currentTime >= Number(mintStartTime));
-
-    if (currentTime < Number(mintStartTime)) {
-      throw new AppError("Minting has not started yet", 400);
-    }
-
-    // Check if already minted
-    const alreadyMinted = await deployedContract.hasMinted(attendee);
-    console.log("Already minted:", alreadyMinted);
-
-    if (alreadyMinted) {
-      throw new AppError("Address has already minted a certificate", 400);
-    }
-
-    // Get the merkle root from contract to verify off-chain
-    const contractMerkleRoot = await deployedContract.merkleRoot();
-    console.log("Contract Merkle Root:", contractMerkleRoot);
-
-    console.log(
-      "local merkel",
-      "0xd7af50e0c5e031e8e9724e2dd2fac90ca172fe37614309ec5a646277677300f3"
-    );
-
-    // Try to estimate gas first to catch errors
-    console.log("Estimating gas...");
-    try {
-      const gasEstimate = await deployedContract.mint.estimateGas(
-        attendee,
-        merkleProof,
-        { from: relayerWallet.address }
-      );
-      console.log("Gas estimate:", gasEstimate.toString());
-    } catch (estimateError) {
-      console.error("Gas estimation failed:", estimateError.message);
-      throw new AppError(
-        "Invalid mint parameters - likely invalid merkle proof",
-        400
-      );
-    }
-
-    // Execute the transaction
-    console.log("Sending transaction...");
-    const tx = await deployedContract.mint(attendee, merkleProof, {
+    // We use estimateGas as a dry run. If it fails, the transaction will likely fail.
+    // This allows us to catch contract reverts without spending gas.
+    await deployedContract.mint.estimateGas(attendee, campaignId, merkleProof, {
       from: relayerWallet.address,
-      gasLimit: 200000, // Add explicit gas limit to avoid estimation issues
     });
 
-    console.log("Transaction sent:", tx.hash);
+    // If estimateGas succeeds, send the actual transaction.
+    const tx = await deployedContract.mint(attendee, campaignId, merkleProof, {
+      from: relayerWallet.address,
+    });
 
-    const receipt = await tx.wait();
-    console.log("Transaction confirmed:", receipt.transactionHash);
-
+    console.log(`Transaction successful. Hash: ${tx.hash}`);
     return tx.hash;
   } catch (error) {
-    console.error("Minting error details:", {
-      errorMessage: error.message,
-      errorCode: error.code,
-      errorData: error.data,
-    });
+    console.error("Error during minting process:", error.message);
 
-    if (
-      error.message.includes("Invalid merkle proof") ||
-      error.message.includes("Merkle")
-    ) {
-      throw new AppError("Invalid merkle proof - not authorized to mint", 400);
-    } else if (error.message.includes("Minting not started")) {
-      throw new AppError("Minting period has not started yet", 400);
-    } else if (error.message.includes("Already minted")) {
-      throw new AppError("Address has already minted a certificate", 400);
-    } else if (error.message.includes("estimateGas")) {
-      throw new AppError("Invalid mint parameters - check merkle proof", 400);
+    // Improved error handling to decode custom errors
+    if (error.code === "CALL_EXCEPTION" && error.data) {
+      const errorSelector = error.data.slice(0, 10);
+      const errorName = CUSTOM_ERRORS[errorSelector];
+
+      if (errorName === "InvalidProof") {
+        throw new AppError(
+          "This address is not on the whitelist for this campaign.",
+          403
+        );
+      }
+      if (errorName === "AlreadyMinted") {
+        throw new AppError(
+          "This address has already minted a certificate for this campaign.",
+          400
+        );
+      }
+      if (
+        errorName === "MintingWindowNotOpen" ||
+        errorName === "CampaignExpired"
+      ) {
+        throw new AppError(
+          "The minting window for this campaign is not currently open.",
+          403
+        );
+      }
+      if (errorName === "CampaignNotActive") {
+        throw new AppError("This campaign is not currently active.", 403);
+      }
+      if (errorName === "MintLimitReached") {
+        throw new AppError(
+          "The maximum number of mints for this campaign has been reached.",
+          403
+        );
+      }
+
+      // This will catch your specific error and provide a clear hint
+      if (errorName) {
+        throw new AppError(
+          `Transaction reverted with contract error: ${errorName}. This often means your backend's contract ABI is out of sync with the deployed contract. Please recompile, redeploy, and restart the server.`,
+          500
+        );
+      }
     }
 
-    throw new AppError(error.message, 500);
+    // Fallback for other unexpected errors
+    throw new AppError(
+      "An unexpected error occurred during the minting process.",
+      500
+    );
   }
 }
 

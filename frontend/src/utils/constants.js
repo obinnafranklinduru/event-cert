@@ -21,6 +21,8 @@ export const CONTRACT_ADDRESS =
   import.meta.env.VITE_CONTRACT_ADDRESS ||
   "0x142b9bCCB616F93b014bD100E4C7D266CC8b7E13";
 
+export const CAMPAIGN_ID = 1;
+
 // API configuration
 export const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL ||
