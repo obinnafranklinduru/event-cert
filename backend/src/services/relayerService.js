@@ -4,15 +4,26 @@ const { AppError } = require("../middleware/errorHandler");
 // A map of known custom error selectors from the smart contract.
 // This allows us to provide user-friendly error messages.
 const CUSTOM_ERRORS = {
-  "0x51722353": "NotAuthorizedRelayer",
-  "0x15328223": "AlreadyMinted",
-  "0x4879222c": "InvalidProof",
-  "0x40b3c3c1": "CampaignNotActive",
-  "0x887c3017": "CampaignDoesNotExist",
-  "0x09bde339": "CampaignMustStartInFuture",
-  "0x1f4b3133": "MintingWindowNotOpen",
-  "0xf2732d3b": "MintLimitReached",
-  "0xcf3ee79a": "CampaignExpired",
+  "0x17fb2066": "NotAuthorizedRelayer",
+  "0xddefae28": "AlreadyMinted",
+  "0x09bde339": "InvalidProof",
+  "0x9cbe2357": "NonTransferable",
+  "0x9430a17e": "NonExistentToken",
+  "0xd92e233d": "ZeroAddress",
+  "0x433528b6": "CampaignNotActive",
+  "0x9b35ed3b": "CampaignDoesNotExist",
+  "0xfece0678": "InvalidCampaignTimes",
+  "0x20f18ff3": "CampaignMustStartInFuture",
+  "0x85ac2b99": "EmptyMerkleRoot",
+  "0xc279959d": "MintingWindowNotOpen",
+  "0x7e31d8a3": "CampaignAlreadyExists",
+  "0xb5ae13c8": "ProofTooLong",
+  "0xb4fa3fb3": "InvalidInput",
+  "0xc24f060d": "CannotModifyStartedCampaign",
+  "0x303b682f": "MintLimitReached",
+  "0xa7b3eca4": "CampaignDurationTooLong",
+  "0x8320b483": "CampaignExpired",
+  "0x69207028": "CampaignHasMints",
 };
 
 /**
@@ -85,7 +96,7 @@ async function mintNFT(attendee, campaignId, merkleProof) {
       // This will catch your specific error and provide a clear hint
       if (errorName) {
         throw new AppError(
-          `Transaction reverted with contract error: ${errorName}. This often means your backend's contract ABI is out of sync with the deployed contract. Please recompile, redeploy, and restart the server.`,
+          `Transaction reverted with contract error: ${errorName}. `,
           500
         );
       }

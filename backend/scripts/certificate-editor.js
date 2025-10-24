@@ -11,8 +11,8 @@ const defaultInputImage = path.join(
 );
 
 registerFont(
-  path.join(__dirname, "..", "assets", "fonts", "GreatVibes-Regular.ttf"),
-  { family: "Great Vibes" }
+  path.join(__dirname, "..", "assets", "fonts", "EBGaramond-Bold.ttf"),
+  { family: "EB Garamond" }
 );
 
 async function editCertificate({
@@ -53,10 +53,12 @@ async function editCertificate({
     let currentSize = Math.floor(img.height * 0.07);
     const minFontSize = Math.floor(img.height * 0.03);
 
-    ctx.font = `${currentSize}px 'Great Vibes'`;
+    ctx.font = `${currentSize}px 'EB Garamond'`;
     let textWidth = ctx.measureText(newName).width;
 
     const stepSize = Math.max(1, Math.floor(currentSize * 0.1));
+
+    const fontFamily = "EB Garamond";
 
     while (
       (textWidth > rect.w || currentSize > rect.h) &&
@@ -100,7 +102,7 @@ async function testFont() {
   const testCanvas = createCanvas(100, 100);
   const testCtx = testCanvas.getContext("2d");
 
-  testCtx.font = "20px 'Great Vibes'";
+  testCtx.font = "20px 'EB Garamond'";
   const availableFonts = testCtx.getContextAttributes().font;
   console.log("Available fonts:", availableFonts);
 

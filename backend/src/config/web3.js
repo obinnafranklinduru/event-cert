@@ -28,9 +28,9 @@ try {
   const contractABI = contractArtifact.abi;
 
   // Setup Provider and Wallets ---
-  provider = new ethers.JsonRpcProvider(process.env.LOCAL_ANVIL_RPC_URL);
+  provider = new ethers.JsonRpcProvider(process.env.BASE_SEPOLIA_RPC_URL);
   relayerWallet = new ethers.Wallet(
-    process.env.LOCAL_ANVIL_RELAYER_PRIVATE_KEY,
+    process.env.BASE_SEPOLIA_RELAYER_PRIVATE_KEY,
     provider
   );
 
@@ -45,7 +45,7 @@ try {
   deployedContract = new ethers.Contract(
     contractAddress,
     contractABI,
-    provider
+    relayerWallet
   );
 
   console.log("Web3 configuration loaded successfully.");
