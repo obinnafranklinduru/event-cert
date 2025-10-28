@@ -19,7 +19,7 @@ export const NETWORKS = {
 // Contract addresses
 export const CONTRACT_ADDRESS =
   import.meta.env.VITE_CONTRACT_ADDRESS ||
-  "0x142b9bCCB616F93b014bD100E4C7D266CC8b7E13";
+  "0x423F09321A5aA584f2b06F7FD987f8718f3caA6a";
 
 export const CAMPAIGN_ID = 1;
 
