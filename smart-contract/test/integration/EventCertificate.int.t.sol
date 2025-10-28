@@ -30,7 +30,7 @@ contract EventCertificateIntegrationTest is Test {
         // 1. SETUP: Deploy the contract
         // =============================================================
         vm.startPrank(owner);
-        cert = new EventCertificate("IntegrationTest", "INT", "ipfs://base/", relayer);
+        cert = new EventCertificate("IntegrationTest", "INT", relayer);
         vm.stopPrank();
         assertEq(cert.owner(), owner);
 
@@ -48,7 +48,7 @@ contract EventCertificateIntegrationTest is Test {
         bytes32[] memory proofForAlice1 = merkleTree.getProof(leaves1, 0);
 
         vm.startPrank(owner);
-        cert.createCampaign(campaign1_id, merkleRoot1, campaign1_startTime, campaign1_endTime, 100);
+        cert.createCampaign(merkleRoot1, campaign1_startTime, campaign1_endTime, 100, "ipfs://cid/");
         vm.stopPrank();
 
         console.log("--- Campaign 1: Tech Conference Created ---");
@@ -94,7 +94,7 @@ contract EventCertificateIntegrationTest is Test {
         bytes32 merkleRoot2_wrong = merkleTree.getRoot(leaves2_wrong);
 
         vm.prank(owner);
-        cert.createCampaign(campaign2_id, merkleRoot2_wrong, campaign2_startTime, campaign2_endTime, 50);
+        cert.createCampaign(merkleRoot2_wrong, campaign2_startTime, campaign2_endTime, 50, "ipfs://cid/");
 
         // Correct root before start
         bytes32[] memory leaves2_correct = new bytes32[](2);

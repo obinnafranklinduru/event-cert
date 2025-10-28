@@ -25,7 +25,6 @@ contract EventCertificate is ERC721, Ownable2Step, Pausable {
     error CampaignMustStartInFuture();
     error EmptyMerkleRoot();
     error MintingWindowNotOpen();
-    error CampaignAlreadyExists();
     error ProofTooLong();
     error InvalidInput();
     error CannotModifyStartedCampaign();
@@ -49,12 +48,14 @@ contract EventCertificate is ERC721, Ownable2Step, Pausable {
     }
 
     // --- State Variables ---
-    string private _baseTokenURI;
     address public relayer;
     mapping(uint256 => MintingCampaign) public campaigns;
     mapping(uint256 => mapping(address => bool)) public hasMintedInCampaign;
     mapping(uint256 => uint256) public campaignMintCount;
+    mapping(uint256 => uint256) public tokenToCampaignId;
+    mapping(uint256 => string) public campaignBaseURI;
     uint256 private _nextTokenId = 1;
+    uint256 private _nextCampaignId = 1;
 
     // --- Events ---
     event CertificateMinted(address indexed attendee, uint256 indexed tokenId, uint256 indexed campaignId);
@@ -65,24 +66,22 @@ contract EventCertificate is ERC721, Ownable2Step, Pausable {
     event CampaignActiveStatusChanged(uint256 indexed campaignId, bool isActive);
     event CampaignDeleted(uint256 indexed campaignId);
     event RelayerUpdated(address newRelayer);
-    event BaseURIUpdated(string newBaseURI);
+    event CampaignBaseURIUpdated(uint256 indexed campaignId, string newBaseURI);
 
     // --- Constructor ---
     /// @notice Initializes the contract with core, immutable parameters.
     /// @param name_ The name of the ERC721 token collection.
     /// @param symbol_ The symbol of the ERC721 token collection.
-    /// @param baseURI_ The base URI for the token metadata.
     /// @param relayer_ The trusted address that will pay gas fees for minting.
-    constructor(string memory name_, string memory symbol_, string memory baseURI_, address relayer_)
+    constructor(string memory name_, string memory symbol_, address relayer_)
         ERC721(name_, symbol_)
         Ownable(msg.sender)
     {
-        if (bytes(name_).length == 0 || bytes(symbol_).length == 0 || bytes(baseURI_).length == 0) {
+        if (bytes(name_).length == 0 || bytes(symbol_).length == 0) {
             revert InvalidInput();
         }
         if (relayer_ == address(0)) revert ZeroAddress();
 
-        _baseTokenURI = baseURI_;
         relayer = relayer_;
     }
 
@@ -115,6 +114,8 @@ contract EventCertificate is ERC721, Ownable2Step, Pausable {
         uint256 tokenId = _nextTokenId;
         hasMintedInCampaign[campaignId][attendee] = true;
         campaignMintCount[campaignId]++;
+        tokenToCampaignId[tokenId] = campaignId;
+
         unchecked {
             _nextTokenId++;
         }
@@ -126,24 +127,24 @@ contract EventCertificate is ERC721, Ownable2Step, Pausable {
     // --- Admin Functions ---
 
     /// @notice Creates a new minting campaign. Campaigns are inactive by default.
-    /// @param campaignId The ID for the new campaign.
     /// @param merkleRoot The whitelist Merkle root.
     /// @param startTime The Unix timestamp for when minting begins.
     /// @param endTime The Unix timestamp for when minting ends.
     /// @param maxMints The maximum number of NFTs that can be minted for this campaign.
     function createCampaign(
-        uint256 campaignId,
         bytes32 merkleRoot,
         uint256 startTime,
         uint256 endTime,
-        uint256 maxMints
+        uint256 maxMints,
+        string calldata baseURI_
     ) external onlyOwner {
-        if (campaigns[campaignId].merkleRoot != bytes32(0)) revert CampaignAlreadyExists();
+        if (bytes(baseURI_).length == 0) revert InvalidInput();
         if (startTime < block.timestamp) revert CampaignMustStartInFuture();
         if (startTime >= endTime) revert InvalidCampaignTimes();
         if (endTime - startTime > MAX_CAMPAIGN_DURATION) revert CampaignDurationTooLong();
         if (merkleRoot == bytes32(0)) revert EmptyMerkleRoot();
 
+        uint256 campaignId = _nextCampaignId;
         campaigns[campaignId] = MintingCampaign({
             merkleRoot: merkleRoot,
             startTime: startTime,
@@ -152,6 +153,11 @@ contract EventCertificate is ERC721, Ownable2Step, Pausable {
             isActive: false
         });
 
+        campaignBaseURI[campaignId] = baseURI_;
+
+        unchecked {
+            _nextCampaignId++;
+        }
         emit CampaignCreated(campaignId, merkleRoot, startTime, endTime, maxMints);
     }
 
@@ -212,6 +218,30 @@ contract EventCertificate is ERC721, Ownable2Step, Pausable {
         emit CampaignActiveStatusChanged(campaignId, isActive);
     }
 
+    /// @notice Allows the contract owner to burn (revoke) a certificate NFT.
+    /// @param tokenId The token ID to burn.
+    function burn(uint256 tokenId) external onlyOwner {
+        address ownerAddr = _ownerOf(tokenId);
+        if (ownerAddr == address(0)) revert NonExistentToken();
+
+        uint256 campaignId = tokenToCampaignId[tokenId];
+        if (campaignId == 0) revert NonExistentToken();
+
+        // Mark user as eligible to re-mint if needed
+        if (hasMintedInCampaign[campaignId][ownerAddr]) {
+            hasMintedInCampaign[campaignId][ownerAddr] = false;
+        }
+
+        // Reduce mint count on campaign if needed
+        if (campaignMintCount[campaignId] > 0) {
+            campaignMintCount[campaignId]--;
+        }
+
+        delete tokenToCampaignId[tokenId];
+
+        _burn(tokenId);
+    }
+
     /// @notice Pauses all minting in an emergency.
     function pause() external onlyOwner {
         _pause();
@@ -230,12 +260,17 @@ contract EventCertificate is ERC721, Ownable2Step, Pausable {
         emit RelayerUpdated(newRelayer);
     }
 
-    /// @notice Updates the base URI for metadata.
-    /// @param newBaseURI The new base URI string.
-    function setBaseURI(string calldata newBaseURI) external onlyOwner {
+    /// @notice Updates the base URI for a campaign (metadata storage location).
+    /// @dev Can be called at any time by owner, even after minting, to fix metadata issues.
+    /// @param campaignId The campaign whose metadata URI should be updated.
+    /// @param newBaseURI The new base URI pointing to updated metadata.
+    function updateCampaignBaseURI(uint256 campaignId, string calldata newBaseURI) external onlyOwner {
+        MintingCampaign storage campaign = campaigns[campaignId];
+        if (campaign.merkleRoot == bytes32(0)) revert CampaignDoesNotExist();
         if (bytes(newBaseURI).length == 0) revert InvalidInput();
-        _baseTokenURI = newBaseURI;
-        emit BaseURIUpdated(newBaseURI);
+
+        campaignBaseURI[campaignId] = newBaseURI;
+        emit CampaignBaseURIUpdated(campaignId, newBaseURI);
     }
 
     // --- View Functions ---
@@ -276,8 +311,16 @@ contract EventCertificate is ERC721, Ownable2Step, Pausable {
     function tokenURI(uint256 tokenId) public view override returns (string memory) {
         address ownerAddr = _ownerOf(tokenId);
         if (ownerAddr == address(0)) revert NonExistentToken();
+
+        // 1. Find which campaign this token belongs to
+        uint256 campaignId = tokenToCampaignId[tokenId];
+
+        // 2. Get the specific baseURI for THAT campaign
+        string memory baseURI = campaignBaseURI[campaignId];
+        if (bytes(baseURI).length == 0) revert NonExistentToken();
+
         string memory addrStr = _toAsciiString(ownerAddr);
-        return string.concat(_baseURI(), addrStr, ".json");
+        return string.concat(baseURI, addrStr, ".json");
     }
 
     /// @dev Helper function to convert an address to its lowercase hex string representation.
@@ -308,10 +351,6 @@ contract EventCertificate is ERC721, Ownable2Step, Pausable {
         }
         // Convert the bytes array to a string and return it.
         return string(str);
-    }
-
-    function _baseURI() internal view override returns (string memory) {
-        return _baseTokenURI;
     }
 
     /// @notice Returns the next token ID that will be minted.

@@ -1,6 +1,9 @@
 const { deployedContract, relayerWallet } = require("../config/web3");
 const { AppError } = require("../middleware/errorHandler");
 
+// TODO: Refactor error handling to a separate utility module if it grows more complex.
+// TODO: info user if the relayer is out of funds.
+
 // A map of known custom error selectors from the smart contract.
 // This allows us to provide user-friendly error messages.
 const CUSTOM_ERRORS = {

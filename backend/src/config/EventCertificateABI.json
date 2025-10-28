@@ -13,11 +13,6 @@
           "type": "string"
         },
         {
-          "internalType": "string",
-          "name": "baseURI_",
-          "type": "string"
-        },
-        {
           "internalType": "address",
           "name": "relayer_",
           "type": "address"
@@ -29,11 +24,6 @@
     {
       "inputs": [],
       "name": "AlreadyMinted",
-      "type": "error"
-    },
-    {
-      "inputs": [],
-      "name": "CampaignAlreadyExists",
       "type": "error"
     },
     {
@@ -315,19 +305,6 @@
       "anonymous": false,
       "inputs": [
         {
-          "indexed": false,
-          "internalType": "string",
-          "name": "newBaseURI",
-          "type": "string"
-        }
-      ],
-      "name": "BaseURIUpdated",
-      "type": "event"
-    },
-    {
-      "anonymous": false,
-      "inputs": [
-        {
           "indexed": true,
           "internalType": "uint256",
           "name": "campaignId",
@@ -341,6 +318,25 @@
         }
       ],
       "name": "CampaignActiveStatusChanged",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "campaignId",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "string",
+          "name": "newBaseURI",
+          "type": "string"
+        }
+      ],
+      "name": "CampaignBaseURIUpdated",
       "type": "event"
     },
     {
@@ -599,6 +595,38 @@
       "inputs": [
         {
           "internalType": "uint256",
+          "name": "tokenId",
+          "type": "uint256"
+        }
+      ],
+      "name": "burn",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "name": "campaignBaseURI",
+      "outputs": [
+        {
+          "internalType": "string",
+          "name": "",
+          "type": "string"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
           "name": "",
           "type": "uint256"
         }
@@ -680,11 +708,6 @@
     {
       "inputs": [
         {
-          "internalType": "uint256",
-          "name": "campaignId",
-          "type": "uint256"
-        },
-        {
           "internalType": "bytes32",
           "name": "merkleRoot",
           "type": "bytes32"
@@ -703,6 +726,11 @@
           "internalType": "uint256",
           "name": "maxMints",
           "type": "uint256"
+        },
+        {
+          "internalType": "string",
+          "name": "baseURI_",
+          "type": "string"
         }
       ],
       "name": "createCampaign",
@@ -1042,19 +1070,6 @@
     {
       "inputs": [
         {
-          "internalType": "string",
-          "name": "newBaseURI",
-          "type": "string"
-        }
-      ],
-      "name": "setBaseURI",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
           "internalType": "uint256",
           "name": "campaignId",
           "type": "uint256"
@@ -1097,6 +1112,25 @@
           "internalType": "string",
           "name": "",
           "type": "string"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "name": "tokenToCampaignId",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
         }
       ],
       "stateMutability": "view",
@@ -1160,6 +1194,24 @@
     {
       "inputs": [],
       "name": "unpause",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "campaignId",
+          "type": "uint256"
+        },
+        {
+          "internalType": "string",
+          "name": "newBaseURI",
+          "type": "string"
+        }
+      ],
+      "name": "updateCampaignBaseURI",
       "outputs": [],
       "stateMutability": "nonpayable",
       "type": "function"

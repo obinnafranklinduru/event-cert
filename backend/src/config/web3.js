@@ -28,9 +28,9 @@ try {
   const contractABI = contractArtifact.abi;
 
   // Setup Provider and Wallets ---
-  provider = new ethers.JsonRpcProvider(process.env.BASE_SEPOLIA_RPC_URL);
+  provider = new ethers.JsonRpcProvider(process.env.BASE_MAINNET_RPC_URL);
   relayerWallet = new ethers.Wallet(
-    process.env.BASE_SEPOLIA_RELAYER_PRIVATE_KEY,
+    process.env.BASE_MAINNET_RELAYER_PRIVATE_KEY,
     provider
   );
 

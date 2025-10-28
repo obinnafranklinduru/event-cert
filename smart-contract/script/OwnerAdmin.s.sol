@@ -30,8 +30,6 @@ contract OwnerAdmin is Script {
             _acceptOwnership();
         } else if (keccak256(abi.encodePacked(command)) == keccak256("updateRelayer")) {
             _updateRelayer();
-        } else if (keccak256(abi.encodePacked(command)) == keccak256("updateBaseURI")) {
-            _updateBaseURI();
         } else if (keccak256(abi.encodePacked(command)) == keccak256("pause")) {
             cert.pause();
             console.log("Contract has been paused.");
@@ -67,13 +65,5 @@ contract OwnerAdmin is Script {
         console.log("Updating relayer to: %s", newRelayer);
         cert.updateRelayer(newRelayer);
         console.log("Relayer updated successfully.");
-    }
-
-    function _updateBaseURI() internal {
-        string memory newBaseURI = vm.envString("NEW_BASE_URI");
-        if (bytes(newBaseURI).length == 0) revert("NEW_BASE_URI not set");
-        console.log("Updating base URI to: %s", newBaseURI);
-        cert.setBaseURI(newBaseURI);
-        console.log("Base URI updated successfully.");
     }
 }

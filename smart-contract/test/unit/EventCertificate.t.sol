@@ -23,7 +23,7 @@ contract EventCertificateUnitTest is Test {
     address internal pendingOwner = makeAddr("pendingOwner");
 
     // --- Campaign & Merkle Data ---
-    uint256 internal constant CAMPAIGN_ID = 1;
+    uint256 public constant CAMPAIGN_ID = 1;
     uint256 internal constant MAX_MINTS = 500;
     bytes32 internal merkleRoot;
     bytes32[] internal proofForAlice;
@@ -31,7 +31,7 @@ contract EventCertificateUnitTest is Test {
     // --- Setup ---
     function setUp() public {
         vm.startPrank(owner);
-        cert = new EventCertificate("TestCert", "TC", "ipfs://cid/", relayer);
+        cert = new EventCertificate("TestCert", "TC", relayer);
         vm.stopPrank();
 
         // Create a standard whitelist for tests
@@ -45,11 +45,11 @@ contract EventCertificateUnitTest is Test {
     }
 
     // --- Helper to create a valid campaign ---
-    function _createValidCampaign(uint256 id) internal {
+    function _createValidCampaign() internal {
         uint256 startTime = block.timestamp + 1 hours;
         uint256 endTime = startTime + 24 hours;
         vm.prank(owner);
-        cert.createCampaign(id, merkleRoot, startTime, endTime, MAX_MINTS);
+        cert.createCampaign(merkleRoot, startTime, endTime, MAX_MINTS, "ipfs://cid/");
     }
 
     // ===============================================
@@ -61,7 +61,7 @@ contract EventCertificateUnitTest is Test {
         uint256 endTime = startTime + 24 hours;
 
         vm.prank(owner);
-        cert.createCampaign(CAMPAIGN_ID, merkleRoot, startTime, endTime, MAX_MINTS);
+        cert.createCampaign(merkleRoot, startTime, endTime, MAX_MINTS, "ipfs://cid/");
 
         EventCertificate.MintingCampaign memory campaign = cert.getCampaign(CAMPAIGN_ID);
         assertEq(campaign.merkleRoot, merkleRoot);
@@ -71,17 +71,10 @@ contract EventCertificateUnitTest is Test {
         assertFalse(campaign.isActive);
     }
 
-    function test_createCampaign_revertsForDuplicateId() public {
-        _createValidCampaign(CAMPAIGN_ID);
-        vm.prank(owner);
-        vm.expectRevert(EventCertificate.CampaignAlreadyExists.selector);
-        cert.createCampaign(CAMPAIGN_ID, merkleRoot, block.timestamp + 1, block.timestamp + 2, MAX_MINTS);
-    }
-
     function test_createCampaign_revertsForPastStartTime() public {
         vm.prank(owner);
         vm.expectRevert(EventCertificate.CampaignMustStartInFuture.selector);
-        cert.createCampaign(CAMPAIGN_ID, merkleRoot, block.timestamp - 1, block.timestamp + 1, MAX_MINTS);
+        cert.createCampaign(merkleRoot, block.timestamp - 1, block.timestamp + 1, MAX_MINTS, "ipfs://cid/");
     }
 
     function test_createCampaign_revertsForStartAfterEndTime() public {
@@ -89,7 +82,7 @@ contract EventCertificateUnitTest is Test {
         uint256 startTime = block.timestamp + 2 hours;
         uint256 endTime = startTime - 1 hours;
         vm.expectRevert(EventCertificate.InvalidCampaignTimes.selector);
-        cert.createCampaign(CAMPAIGN_ID, merkleRoot, startTime, endTime, MAX_MINTS);
+        cert.createCampaign(merkleRoot, startTime, endTime, MAX_MINTS, "ipfs://cid/");
     }
 
     function test_createCampaign_revertsForDurationTooLong() public {
@@ -97,17 +90,17 @@ contract EventCertificateUnitTest is Test {
         uint256 startTime = block.timestamp + 1 hours;
         uint256 endTime = startTime + 366 days; // Exceeds MAX_CAMPAIGN_DURATION
         vm.expectRevert(EventCertificate.CampaignDurationTooLong.selector);
-        cert.createCampaign(CAMPAIGN_ID, merkleRoot, startTime, endTime, MAX_MINTS);
+        cert.createCampaign(merkleRoot, startTime, endTime, MAX_MINTS, "ipfs://cid/");
     }
 
     function test_createCampaign_revertsForEmptyMerkleRoot() public {
         vm.prank(owner);
         vm.expectRevert(EventCertificate.EmptyMerkleRoot.selector);
-        cert.createCampaign(CAMPAIGN_ID, bytes32(0), block.timestamp + 1, block.timestamp + 2, MAX_MINTS);
+        cert.createCampaign(bytes32(0), block.timestamp + 1, block.timestamp + 2, MAX_MINTS, "ipfs://cid/");
     }
 
     function test_updateCampaign_succeedsBeforeStart() public {
-        _createValidCampaign(CAMPAIGN_ID);
+        _createValidCampaign();
         bytes32 newRoot = keccak256("new");
         uint256 newStart = block.timestamp + 2 hours;
         uint256 newEnd = newStart + 1 hours;
@@ -121,7 +114,7 @@ contract EventCertificateUnitTest is Test {
     }
 
     function test_updateCampaign_revertsAfterStart() public {
-        _createValidCampaign(CAMPAIGN_ID);
+        _createValidCampaign();
         uint256 startTime = cert.getCampaign(CAMPAIGN_ID).startTime;
         vm.warp(startTime); // Move time to the campaign start time
 
@@ -130,15 +123,8 @@ contract EventCertificateUnitTest is Test {
         cert.updateCampaignBeforeStart(CAMPAIGN_ID, bytes32(0), startTime + 1, startTime + 2);
     }
 
-    function test_setCampaignActiveStatus_revertsBeforeStartTime() public {
-        _createValidCampaign(CAMPAIGN_ID);
-        vm.prank(owner);
-        vm.expectRevert(EventCertificate.MintingWindowNotOpen.selector);
-        cert.setCampaignActiveStatus(CAMPAIGN_ID, true);
-    }
-
     function test_setCampaignActiveStatus_revertsAfterEndTime() public {
-        _createValidCampaign(CAMPAIGN_ID);
+        _createValidCampaign();
         uint256 endTime = cert.getCampaign(CAMPAIGN_ID).endTime;
         vm.warp(endTime + 1); // Move time past the end
 
@@ -152,7 +138,7 @@ contract EventCertificateUnitTest is Test {
     // ===============================================
 
     function test_mint_succeeds() public {
-        _createValidCampaign(CAMPAIGN_ID);
+        _createValidCampaign();
         EventCertificate.MintingCampaign memory campaign = cert.getCampaign(CAMPAIGN_ID);
         vm.warp(campaign.startTime); // Go to start time
 
@@ -164,10 +150,18 @@ contract EventCertificateUnitTest is Test {
 
         assertEq(cert.ownerOf(1), alice);
         assertTrue(cert.hasMintedInCampaign(CAMPAIGN_ID, alice));
+
+         string memory expected = string.concat(
+            "ipfs://cid/",
+            _toAsciiString(alice),
+            ".json"
+        );
+
+        assertEq(cert.tokenURI(1), expected);
     }
 
     function test_mint_revertsIfMintedTwice() public {
-        _createValidCampaign(CAMPAIGN_ID);
+        _createValidCampaign();
         EventCertificate.MintingCampaign memory campaign = cert.getCampaign(CAMPAIGN_ID);
         vm.warp(campaign.startTime);
 
@@ -183,7 +177,7 @@ contract EventCertificateUnitTest is Test {
     }
 
     function test_mint_revertsForInvalidProof() public {
-        _createValidCampaign(CAMPAIGN_ID);
+        _createValidCampaign();
         EventCertificate.MintingCampaign memory campaign = cert.getCampaign(CAMPAIGN_ID);
         vm.warp(campaign.startTime);
 
@@ -197,7 +191,7 @@ contract EventCertificateUnitTest is Test {
     }
 
     function test_mint_revertsOutsideTimeWindow() public {
-        _createValidCampaign(CAMPAIGN_ID);
+        _createValidCampaign();
         EventCertificate.MintingCampaign memory campaign = cert.getCampaign(CAMPAIGN_ID);
         vm.warp(campaign.startTime);
 
@@ -212,7 +206,7 @@ contract EventCertificateUnitTest is Test {
     }
 
     function test_mint_revertsIfCampaignInactive() public {
-        _createValidCampaign(CAMPAIGN_ID);
+        _createValidCampaign();
         // Don't activate the campaign
         vm.prank(relayer);
         vm.expectRevert(EventCertificate.CampaignNotActive.selector);
@@ -234,7 +228,7 @@ contract EventCertificateUnitTest is Test {
         uint256 endTime = startTime + 24 hours;
 
         vm.prank(owner);
-        cert.createCampaign(CAMPAIGN_ID, merkleRootLocal, startTime, endTime, 1);
+        cert.createCampaign(merkleRootLocal, startTime, endTime, 1, "ipfs://cid/");
 
         // Warp to start time (so campaign is within minting window)
         vm.warp(startTime);
@@ -254,14 +248,14 @@ contract EventCertificateUnitTest is Test {
     }
 
     function test_mint_revertsForZeroAddress() public {
-        _createValidCampaign(CAMPAIGN_ID);
+        _createValidCampaign();
         vm.prank(relayer);
         vm.expectRevert(EventCertificate.ZeroAddress.selector);
         cert.mint(address(0), CAMPAIGN_ID, proofForAlice);
     }
 
     function test_mint_revertsForProofTooLong() public {
-        _createValidCampaign(CAMPAIGN_ID);
+        _createValidCampaign();
         bytes32[] memory longProof = new bytes32[](501);
         vm.prank(relayer);
         vm.expectRevert(EventCertificate.ProofTooLong.selector);
@@ -269,7 +263,7 @@ contract EventCertificateUnitTest is Test {
     }
 
     function test_mint_revertsIfNotRelayer() public {
-        _createValidCampaign(CAMPAIGN_ID);
+        _createValidCampaign();
         vm.prank(owner); // Not the relayer
         vm.expectRevert(EventCertificate.NotAuthorizedRelayer.selector);
         cert.mint(alice, CAMPAIGN_ID, proofForAlice);
@@ -287,7 +281,7 @@ contract EventCertificateUnitTest is Test {
     }
 
     function test_admin_pauseAndUnpause() public {
-        _createValidCampaign(CAMPAIGN_ID);
+        _createValidCampaign();
         vm.warp(cert.getCampaign(CAMPAIGN_ID).startTime);
         vm.prank(owner);
         cert.setCampaignActiveStatus(CAMPAIGN_ID, true);
@@ -310,17 +304,7 @@ contract EventCertificateUnitTest is Test {
         cert.mint(alice, CAMPAIGN_ID, proofForAlice);
         assertEq(cert.ownerOf(1), alice);
     }
-
-    function test_admin_updateBaseURI() public {
-        string memory newURI = "ipfs://new/";
-        vm.prank(owner);
-        cert.setBaseURI(newURI);
-        // To test, we must mint a token first
-        test_mint_succeeds();
-        string memory expectedURI = string.concat(newURI, _toAsciiString(alice), ".json");
-        assertEq(cert.tokenURI(1), expectedURI);
-    }
-
+    
     function test_admin_ownershipTransfer2Step() public {
         vm.prank(owner);
         cert.transferOwnership(pendingOwner);
@@ -332,6 +316,27 @@ contract EventCertificateUnitTest is Test {
         assertEq(cert.owner(), pendingOwner);
         assertEq(cert.pendingOwner(), address(0));
     }
+
+    // function test_tokenURI_succeedsWithOwnerAddress() public {
+    //      _createValidCampaign();
+
+    //     // Activate and warp
+    //     vm.warp(startTime);
+    //     vm.prank(owner);
+    //     cert.setCampaignActiveStatus(CAMPAIGN_ID, true);
+
+    //     // Mint
+    //     vm.prank(relayer);
+    //     cert.mint(alice, CAMPAIGN_ID, proofForAlice);
+
+    //     string memory expected = string.concat(
+    //         "ipfs://cid/",
+    //         _toAsciiString(alice),
+    //         ".json"
+    //     );
+
+    //     assertEq(cert.tokenURI(1), expected);
+    // }
 
     // --- Helper ---
     function _toAsciiString(address addr) internal pure returns (string memory) {

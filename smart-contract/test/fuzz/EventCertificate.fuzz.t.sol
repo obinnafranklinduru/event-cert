@@ -16,7 +16,7 @@ contract EventCertificateFuzzTest is StdInvariant, Test {
 
     function setUp() public {
         // Deploy the main contract we want to test
-        cert = new EventCertificate("FuzzTest", "FUZZ", "ipfs://fuzz/", makeAddr("relayer"));
+        cert = new EventCertificate("FuzzTest", "FUZZ", makeAddr("relayer"));
         merkleTree = new Merkle();
 
         // Create the helper (handler) contract that defines what fuzzing can do
@@ -95,13 +95,12 @@ contract Handler is Test {
     /// @notice Owner creates a new campaign
     function createCampaign(uint96 _startTime, uint96 _endTime, uint32 _maxMints) public {
         vm.prank(owner);
-        lastCampaignId++;
 
         uint256 startTime = block.timestamp + (_startTime % 1 days); // within next 24h
         uint256 endTime = startTime + 1 hours + (_endTime % 7 days); // last up to 7d
         uint256 maxMints = 1 + (_maxMints % 50); // up to 50 mints
 
-        cert.createCampaign(lastCampaignId, merkleRoot, startTime, endTime, maxMints);
+        cert.createCampaign(merkleRoot, startTime, endTime, maxMints, "ipfs://cid/");
     }
 
     /// @notice Owner can activate or deactivate a campaign

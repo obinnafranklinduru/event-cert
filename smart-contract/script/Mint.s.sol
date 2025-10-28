@@ -28,7 +28,6 @@ contract MintCertificateScript is Script {
         bytes memory decodedProof = vm.parseJson(merkleProofJson);
         bytes32[] memory merkleProof = abi.decode(decodedProof, (bytes32[]));
 
-
         // --- Interact with Contract ---
         EventCertificate certificate = EventCertificate(payable(contractAddress));
 
@@ -41,10 +40,9 @@ contract MintCertificateScript is Script {
         // We set it to 1 second after the start time to be safely within the window.
         uint256 warpTargetTime = campaign.startTime + 1;
         vm.warp(warpTargetTime);
-        
+
         console.log("Time warped to match campaign window.");
         console.log("  - Warped Timestamp:", warpTargetTime);
-
 
         console.log("Attempting to mint certificate...");
         console.log("  - Contract:", contractAddress);
@@ -67,4 +65,3 @@ contract MintCertificateScript is Script {
         console.log("==================================");
     }
 }
-
