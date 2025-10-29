@@ -22,7 +22,7 @@ export const formatAddress = (address, prefixLength = 6, suffixLength = 4) => {
  */
 export const getExplorerUrl = (txHash, networkId = "0x14a33") => {
   const network = Object.values(NETWORKS).find((n) => n.id === networkId);
-  const explorerUrl = network?.explorerUrl || NETWORKS.BASE_SEPOLIA.explorerUrl;
+  const explorerUrl = network?.explorerUrl || NETWORKS.BASE_MAINNET.explorerUrl;
   return `${explorerUrl}/tx/${txHash}`;
 };
 
