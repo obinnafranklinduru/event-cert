@@ -73,8 +73,32 @@ export const useClaim = (campaignId) => {
             err.message.includes("already minted") ||
             err.message.includes("AlreadyMinted")
           ) {
-            setError("You have already claimed your certificate");
-            setHasClaimed(true);
+            console.log(
+              "Already minted. Fetching existing transaction from DB..."
+            );
+            setStatusMessage(
+              "Already claimed. Fetching existing transaction from DB..."
+            );
+
+            try {
+              // Call the new API endpoint
+              const existingHash = await apiService.getMintTransaction(
+                address,
+                campaignId
+              );
+
+              // Set state to show the success screen
+              setTxHash(existingHash);
+              setHasClaimed(true);
+              setStatusMessage(COSMIC_MESSAGES.success[0]);
+            } catch (findErr) {
+              // Handle the edge case where the DB lookup fails
+              console.error("Failed to find existing mint:", findErr);
+              setError(
+                "You've already minted, but we couldn't find your original transaction. Please contact support."
+              );
+              setHasClaimed(true); // Still set this to stop retry attempts
+            }
           } else if (
             err.message.includes("Invalid proof") ||
             err.message.includes("InvalidProof")
@@ -99,7 +123,7 @@ export const useClaim = (campaignId) => {
         setIsClaiming(false);
       }
     },
-    [startClaimingMessages]
+    [startClaimingMessages, campaignId]
   );
 
   /**

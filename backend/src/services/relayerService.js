@@ -54,8 +54,6 @@ async function mintNFT(attendee, campaignId, merkleProof) {
     const tx = await deployedContract.mint(attendee, campaignId, merkleProof, {
       from: relayerWallet.address,
     });
-
-    console.log(`Transaction successful. Hash: ${tx.hash}`);
     return tx.hash;
   } catch (error) {
     console.error("Error during minting process:", error.message);

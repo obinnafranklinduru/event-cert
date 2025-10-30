@@ -103,6 +103,22 @@ class ApiService {
   }
 
   /**
+   * Retrieves the original transaction hash for a user who has already minted.
+   * @param {string} address - The user's wallet address.
+   * @param {string | number} campaignId - The ID of the campaign.
+   * @returns {Promise<string>} The original transaction hash.
+   */
+  async getMintTransaction(address, campaignId) {
+    const response = await this.client.get(`/campaigns/${campaignId}/mint`, {
+      params: { address },
+    });
+    if (!response.success) {
+      throw new Error(response.error || "Failed to find existing mint");
+    }
+    return response.data.transactionHash;
+  }
+
+  /**
    * Checks if the backend API is healthy.
    * @returns {Promise<boolean>} True if the API is healthy.
    */

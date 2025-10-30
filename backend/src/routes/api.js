@@ -3,6 +3,7 @@ const {
   getProof,
   mintCertificate,
   getCampaign,
+  getMintTransaction,
 } = require("../controllers/merkleController");
 
 const router = express.Router();
@@ -33,5 +34,14 @@ router.get("/campaigns/:campaignId/get-proof", getProof);
  * @returns {object} 200 - { success: true, data: { transactionHash: "0x..." } }
  */
 router.post("/campaigns/:campaignId/mint", mintCertificate);
+
+/**
+ * @route GET /api/campaign/:campaignId/mint
+ * @description Retrieves the mint transaction hash for a specific user and campaign.
+ * @param {string} param.campaignId - The ID of the campaign.
+ * @query {string} address - The wallet address of the attendee.
+ * @returns {object} 200 - { success: true, data: { transactionHash: "0x..." } }
+ */
+router.get("/campaigns/:campaignId/mint", getMintTransaction);
 
 module.exports = router;

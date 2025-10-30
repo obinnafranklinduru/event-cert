@@ -2,7 +2,9 @@ const { isAddress, getAddress } = require("ethers");
 const getCampaignDetails = require("../services/campaignService");
 const getProofForAddress = require("../services/proofService");
 const mintNFT = require("../services/relayerService");
+const findExistingMint = require("../services/mintService");
 const { AppError } = require("../middleware/errorHandler");
+const dbModel = require("../config/db");
 
 /**
  * Provides the Merkle proof for a given wallet address for a specific campaign.
@@ -80,6 +82,23 @@ const mintCertificate = async (req, res, next) => {
         new AppError("Minting transaction failed to return a hash", 500)
       );
 
+    const db = await dbModel;
+
+    await new Promise((resolve, reject) => {
+      const sql = `INSERT INTO mints (campaignId, attendeeAddress, transactionHash) VALUES (?, ?, ?)`;
+
+      db.run(sql, [campaignId, normalizedAddress, transactionHash], (err) => {
+        if (err) {
+          console.error("Database error while recording mint:", err.message);
+          return reject(
+            new AppError("Minting succeeded, but failed to save record.", 500)
+          );
+        } else {
+          resolve();
+        }
+      });
+    });
+
     res.status(200).json({
       success: true,
       data: { transactionHash },
@@ -119,4 +138,50 @@ const getCampaign = async (req, res, next) => {
   }
 };
 
-module.exports = { getProof, mintCertificate, getCampaign };
+/**
+ * Retrieves the original transaction hash for a user who has already minted.
+ * @param {object} req - Express request object
+ * @param {object} res - Express response object
+ * @param {function} next - Express next middleware function
+ */
+const getMintTransaction = async (req, res, next) => {
+  try {
+    const { campaignId } = req.params;
+    const { address } = req.query;
+
+    // Validation
+    if (!campaignId)
+      return next(new AppError("Campaign ID is required in the URL path", 400));
+    if (!address)
+      return next(new AppError("Address query parameter is required", 400));
+    if (!isAddress(address))
+      return next(new AppError("Invalid Ethereum address format", 400));
+
+    const normalizedAddress = getAddress(address);
+
+    const transactionHash = await findExistingMint(
+      normalizedAddress,
+      campaignId
+    );
+
+    if (transactionHash) {
+      // Found it!
+      res.status(200).json({
+        success: true,
+        data: { transactionHash },
+        message: "Previously minted transaction hash retrieved.",
+      });
+    } else {
+      return next(
+        new AppError(
+          "Mint record not found in database. Please contact support.",
+          404
+        )
+      );
+    }
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = { getProof, mintCertificate, getCampaign, getMintTransaction };

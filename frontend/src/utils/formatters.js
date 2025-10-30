@@ -20,7 +20,7 @@ export const formatAddress = (address, prefixLength = 6, suffixLength = 4) => {
  * @param {string} networkId - Network ID (hex)
  * @returns {string} Explorer URL
  */
-export const getExplorerUrl = (txHash, networkId = "0x14a33") => {
+export const getExplorerUrl = (txHash, networkId = "0x2105") => {
   const network = Object.values(NETWORKS).find((n) => n.id === networkId);
   const explorerUrl = network?.explorerUrl || NETWORKS.BASE_MAINNET.explorerUrl;
   return `${explorerUrl}/tx/${txHash}`;
