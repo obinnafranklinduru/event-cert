@@ -19,7 +19,8 @@ export const COSMIC_MESSAGES = {
   ],
 
   success: [
-    "🎉 Certificate successfully claimed!",
+    "✨Your cosmic certificate has been successfully minted and added to your wallet.",
+    "🌟 Congratulations! Previously minted transaction hash retrieved.",
     "✨ Welcome to the cosmic registry!",
     "🌟 Your digital proof awaits!",
     "🚀 Mission accomplished, cosmic traveler!",

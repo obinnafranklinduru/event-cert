@@ -212,10 +212,7 @@ const ClaimStatus = ({
       <div className={`success-section ${className}`}>
         <div className="confetti">🎉</div>
         <h3 className="success-title">Certificate Claimed!</h3>
-        <p className="success-text">
-          Your cosmic certificate has been successfully minted and added to your
-          wallet.
-        </p>
+        <p className="success-text">{statusMessage}</p>
         <a
           href={getExplorerUrl(txHash)}
           target="_blank"

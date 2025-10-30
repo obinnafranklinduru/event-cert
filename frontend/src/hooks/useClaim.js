@@ -90,7 +90,7 @@ export const useClaim = (campaignId) => {
               // Set state to show the success screen
               setTxHash(existingHash);
               setHasClaimed(true);
-              setStatusMessage(COSMIC_MESSAGES.success[0]);
+              setStatusMessage(COSMIC_MESSAGES.success[1]);
             } catch (findErr) {
               // Handle the edge case where the DB lookup fails
               console.error("Failed to find existing mint:", findErr);
